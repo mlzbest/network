@@ -9,7 +9,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: '检测网络',
+    navigationBarTitleText: '',
     navigationBarTextStyle: 'black'
   },
   // 隐私协议配置:平台CI仅允许位置相关接口,录音/媒体接口需在真机测试

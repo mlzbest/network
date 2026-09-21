@@ -2,9 +2,9 @@ import { View, Image } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import { useEffect, useState, useRef, type ReactNode } from 'react';
 import { armShield, disarmShield, isShieldArmed, getArmedRoute, setLastVisibleRoute, getLastVisibleRoute } from '@/lib/shield-state';
-import bgLotus from '@/assets/backgrounds/bg-lotus.jpg';
 
 // 遮挡背景图（静心禅意主题）
+const SHIELD_BG = 'https://conversation.cdn.meoo.host/conversations/350520193228980224/image/2026-09-15/1789435452942-image.png?auth_key=ee50ee6f42846f5da01f63550054ec008c3ded902d24944becdf14db1c0e2017';
 
 /**
  * 隐私遮罩壳(PrivacyShield)
@@ -188,7 +188,7 @@ export default function PrivacyShield({ children }: { children: ReactNode }) {
         >
           {/* 背景图铺满全屏 */}
           <Image
-            src={bgLotus}
+            src={SHIELD_BG}
             mode="aspectFill"
             style={{
               position: 'absolute',

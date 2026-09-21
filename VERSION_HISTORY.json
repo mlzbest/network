@@ -1,5 +1,119 @@
 [
   {
+    "version": "1.0.56",
+    "date": "2026-09-21",
+    "note": "同步meoo模板全部页面",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.55",
+    "date": "2026-09-21",
+    "note": "同步meoo模板至防护罩与页面",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.54",
+    "date": "2026-09-21",
+    "note": "防护罩同步至聊天详情与我页面",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.53",
+    "date": "2026-09-21",
+    "note": "移除防护罩文字提示",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.52",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.51",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.50",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.49",
+    "date": "2026-09-21",
+    "note": "fix shield click through",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.48",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.47",
+    "date": "2026-09-21",
+    "note": "fix privacy shield click through",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.46",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.45",
+    "date": "2026-09-21",
+    "note": "clear nav title text",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.44",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.43",
+    "date": "2026-09-21",
+    "note": "fix profile shield from background, restore nav title",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.42",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.41",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.40",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.39",
+    "date": "2026-09-21",
+    "note": "fix profile shield, remove duplicate useDidShow, clear nav title",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.38",
+    "date": "2026-09-21",
+    "note": "fix privacy shield fullscreen and remove network detection title",
+    "bumpType": "patch"
+  },
+  {
     "version": "1.0.37",
     "date": "2026-09-21",
     "note": "fix upload failure",

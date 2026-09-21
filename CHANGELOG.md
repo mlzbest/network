@@ -1,5 +1,95 @@
 # Changelog
 
+## [1.0.56] - 2026-09-21
+
+### Changed
+- 同步meoo模板全部页面
+
+## [1.0.55] - 2026-09-21
+
+### Changed
+- 同步meoo模板至防护罩与页面
+
+## [1.0.54] - 2026-09-21
+
+### Changed
+- 防护罩同步至聊天详情与我页面
+
+## [1.0.53] - 2026-09-21
+
+### Changed
+- 移除防护罩文字提示
+
+## [1.0.52] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.51] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.50] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.49] - 2026-09-21
+
+### Changed
+- fix shield click through
+
+## [1.0.48] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.47] - 2026-09-21
+
+### Changed
+- fix privacy shield click through
+
+## [1.0.46] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.45] - 2026-09-21
+
+### Changed
+- clear nav title text
+
+## [1.0.44] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.43] - 2026-09-21
+
+### Changed
+- fix profile shield from background, restore nav title
+
+## [1.0.42] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.41] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.40] - 2026-09-21
+
+### Changed
+- Update
+
+## [1.0.39] - 2026-09-21
+
+### Changed
+- fix profile shield, remove duplicate useDidShow, clear nav title
+
 ## [1.0.37] - 2026-09-21
 
 ### Changed

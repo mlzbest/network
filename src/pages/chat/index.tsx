@@ -7,9 +7,13 @@ import { supabase, supabaseUrl } from '@/supabase/client';
 import { redirectToLogin } from '@/lib/redirect-to-login';
 import { useKeyboardOffset } from '@/lib/hooks/use-keyboard-offset';
 import { uploadToSupabase, selectMediaFiles } from '@/lib/upload';
+import * as messagesApi from '@/api/messages';
+import * as conversationsApi from '@/api/conversations';
 import type { Message } from '@/api/messages';
-import { setPageSwitching, resetPageSwitching, setCurrentPage, getCurrentPage } from '@/lib/inactivity-timer';
+import { setPageSwitching, getPageSwitching, resetPageSwitching, setCurrentPage, getCurrentPage } from '@/lib/inactivity-timer';
 import PrivacyShield from '@/components/privacy-shield';
+import { isShieldArmed, getArmedRoute } from '@/lib/shield-state';
+
 export default function ChatPage() {
   const router = useRouter();
   const conversationId = router.params.conversationId || '';
@@ -26,11 +30,14 @@ export default function ChatPage() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [hiddenClickCount, setHiddenClickCount] = useState(0);
+  const [timerStatus, setTimerStatus] = useState('未启动'); // 调试用:显示计时器状态
+  const timerStartTimeRef = useRef<number>(0); // 记录计时器启动时间戳
   const keyboardOffset = useKeyboardOffset();
   const recorderManagerRef = useRef<any>(null);
   const innerAudioContextRef = useRef<any>(null);
   const recordingTimerRef = useRef<any>(null);
   const hiddenClickTimerRef = useRef<any>(null);
+  const inactivityTimerRef = useRef<any>(null);
   const pollingTimerRef = useRef<any>(null); // 轮询计时器(Realtime降级方案)
   const realtimeConnectedRef = useRef(false); // Realtime连接状态
   const lastPeerMsgAtRef = useRef(0); // 最近一条对方消息的服务端时间戳(ms),用于计算推送延迟
@@ -41,72 +48,7 @@ export default function ChatPage() {
   const longPressTimerRef = useRef<any>(null); // 长按计时器
   const pendingLongPressRef = useRef<string | null>(null); // 长按已触发但抬手click未消费的消息id
   const longPressFiredRef = useRef(false); // 本次触摸是否已触发长按
-
-  // 无操作计时器（v1.0.33 内联实现）
-  const timerStartTimeRef = useRef<number>(0);
-  const inactivityTimerRef = useRef<any>(null);
-  const INACTIVITY_TIMEOUT_MS = 120_000; // 120秒
-
-  const resetInactivityTimer = () => {
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-    }
-    timerStartTimeRef.current = Date.now();
-    inactivityTimerRef.current = setTimeout(() => {
-      console.log('[chat] ⏰ 无操作120秒，自动返回Ping页');
-      inactivityTimerRef.current = null;
-      timerStartTimeRef.current = 0;
-      Taro.reLaunch({ url: '/pages/ping/index' });
-    }, INACTIVITY_TIMEOUT_MS);
-  };
-
-  const checkInactivityTimeout = () => {
-    if (!timerStartTimeRef.current) return;
-    const elapsed = Date.now() - timerStartTimeRef.current;
-    if (elapsed >= INACTIVITY_TIMEOUT_MS) {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-        inactivityTimerRef.current = null;
-      }
-      timerStartTimeRef.current = 0;
-      console.log('[chat] ⏰ 进入时已超时，立即返回Ping页');
-      Taro.reLaunch({ url: '/pages/ping/index' });
-    }
-  };
-
-  useDidShow(() => {
-    if (!conversationId) return;
-    // 首次进入且有消息时,自动滚动到底部(使用递增计数器确保触发)
-    if (messages.length > 0) {
-      timerIdCounter.current += 1;
-      const newScrollTop = 999999 + timerIdCounter.current;
-      setTimeout(() => {
-        setScrollTop(newScrollTop);
-        console.log('[chat] 首次进入自动滚动到底部, scrollTop:', newScrollTop);
-      }, 500);
-    }
-
-    // 计时器逻辑
-    const currentPage = getCurrentPage();
-    setCurrentPage('chat');
-    const isPageSwitch = currentPage !== '' && currentPage !== 'chat';
-    if (isPageSwitch) {
-      resetInactivityTimer();
-    } else if (timerStartTimeRef.current) {
-      checkInactivityTimeout();
-    } else {
-      resetInactivityTimer();
-    }
-  });
-
-  useDidHide(() => {
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-      inactivityTimerRef.current = null;
-    }
-    timerStartTimeRef.current = 0;
-    setPageSwitching(true);
-  });
+  const [replyTo, setReplyTo] = useState<Message | null>(null); // 正在引用回复的消息
 
   // 自定义导航栏(去掉原生返回键)后,顶部需留出状态栏高度,避免内容被刘海/状态栏遮挡
   const statusBarHeight = Taro.getSystemInfoSync().statusBarHeight || 0;
@@ -166,19 +108,134 @@ export default function ChatPage() {
     }
   }, [msgLoaded]);
 
+  // 120秒无输入自动返回网络页面
+  const resetInactivityTimer = () => {
+    const now = Date.now();
+
+    // 清除旧的计时器(如果存在)
+    if (inactivityTimerRef.current) {
+      clearInterval(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+
+    timerStartTimeRef.current = now;
+    const timeStr = new Date().toLocaleTimeString();
+    console.log(`[chat] 🔥 [${timeStr}] 启动120秒计时器(setInterval模式), timerStartTimeRef=${now}`);
+
+    // 使用setInterval每1秒检查一次
+    inactivityTimerRef.current = setInterval(() => {
+      const checkTime = Date.now();
+      const elapsed = checkTime - timerStartTimeRef.current;
+
+      // 检查当前页面是否仍是活跃页面
+      const currentPage = getCurrentPage();
+      if (currentPage !== 'chat') {
+        console.log(`[chat] ⚠️ 当前活跃页面是${currentPage},不是chat,清除计时器`);
+        if (inactivityTimerRef.current) {
+          clearInterval(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+        }
+        return;
+      }
+
+      // 检查是否超时
+      if (elapsed >= 120000) {
+        const timeoutTime = new Date().toLocaleTimeString();
+        console.log(`[chat] ⏰ [${timeoutTime}] 确认超时(${Math.floor(elapsed / 1000)}秒),执行跳转`);
+        // 先清除计时器并重置时间戳,防止重复跳转
+        if (inactivityTimerRef.current) {
+          clearInterval(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+        }
+        timerStartTimeRef.current = 0; // 重置时间戳,防止下次tick再次触发
+        Taro.reLaunch({ url: '/pages/ping/index' });
+      }
+    }, 1000); // 每1秒检查一次
+  };
+
+  // 检查是否已超时,如果超时就跳转
+  const checkTimeout = () => {
+    if (!timerStartTimeRef.current) return;
+    const elapsed = Date.now() - timerStartTimeRef.current;
+    const timeStr = new Date().toLocaleTimeString();
+    console.log(`[chat] 🔍 [${timeStr}] 检查超时: 已过去 ${Math.floor(elapsed / 1000)}秒`);
+    if (elapsed >= 120000) {
+      console.log(`[chat] ⚠️ [${timeStr}] 检测到已超时(${Math.floor(elapsed / 1000)}秒),立即跳转`);
+      Taro.reLaunch({ url: '/pages/ping/index' });
+    } else {
+      const remaining = Math.ceil((120000 - elapsed) / 1000);
+      console.log(`[chat] ℹ️ [${timeStr}] 未超时,剩余 ${remaining}秒`);
+    }
+  };
+
   // 页面显示时:区分页面切换vs从后台切回
   useDidShow(() => {
+    // 兜底拦截：遮挡未解除期间(如点原生返回键/右滑)落到本页，立即弹回被遮挡页
+    if (isShieldArmed() && getArmedRoute() !== 'pages/chat/index') {
+      console.log('[chat] 检测到遮挡未解除, 兜底弹回:', getArmedRoute());
+      Taro.reLaunch({ url: '/' + getArmedRoute() });
+      return;
+    }
+    const timeStr = new Date().toLocaleTimeString();
+    const currentPage = getCurrentPage();
+    const isPageSwitch = currentPage !== '' && currentPage !== 'chat'; // 如果当前活跃页面不是自己,说明是页面切换
+
+    // 先强制清除任何可能存在的旧计时器
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+      console.log(`[chat] 🛑 [${timeStr}] 强制清除旧计时器`);
+    }
+
+    setCurrentPage('chat'); // 记录当前活跃页面
+
+    console.log(`[chat] 📱 [${timeStr}] useDidShow 触发, currentPage=${currentPage}, isPageSwitch=${isPageSwitch}`);
+    setTimerStatus('已启动');
+
     if (!conversationId) return;
 
-    // 首次进入且有消息时,自动滚动到底部(使用递增计数器确保触发)
-    if (messages.length > 0) {
-      timerIdCounter.current += 1;
-      const newScrollTop = 999999 + timerIdCounter.current;
-      setTimeout(() => {
-        setScrollTop(newScrollTop);
-        console.log('[chat] 首次进入自动滚动到底部, scrollTop:', newScrollTop);
-      }, 500);
+    if (isPageSwitch) {
+      // 页面切换:重置计时器
+      console.log(`[chat] 🔄 [${timeStr}] 检测到页面切换(从${currentPage}切换过来),重置计时器`);
+      resetInactivityTimer();
+    } else if (timerStartTimeRef.current) {
+      // 从后台切回:检查是否超时
+      console.log(`[chat] 🔙 [${timeStr}] 从后台切回,检查是否超时`);
+      checkTimeout();
+    } else {
+      // 首次进入页面,启动计时器
+      console.log(`[chat]  [${timeStr}] 首次进入页面,启动计时器`);
+      resetInactivityTimer();
+
+      // 首次进入且有消息时,自动滚动到底部(使用递增计数器确保触发)
+      if (messages.length > 0) {
+        timerIdCounter.current += 1;
+        const newScrollTop = 999999 + timerIdCounter.current;
+        setTimeout(() => {
+          setScrollTop(newScrollTop);
+          console.log('[chat] 首次进入自动滚动到底部, scrollTop:', newScrollTop);
+        }, 500);
+      }
     }
+  });
+
+  // 页面隐藏时:清除计时器,标记为页面切换
+  useDidHide(() => {
+    const timeStr = new Date().toLocaleTimeString();
+    console.log(`[chat] 👻 [${timeStr}] useDidHide 触发,清除计时器并标记为页面切换`);
+    setTimerStatus('页面隐藏');
+
+    // 强制清除计时器(无论是否有)
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+      console.log(`[chat] 🛑 [${timeStr}] 已清除旧计时器`);
+    } else {
+      console.log(`[chat] ℹ️ [${timeStr}] 无活跃计时器可清除`);
+    }
+
+    setPageSwitching(true); // 标记为页面切换
+    console.log(`[chat] 🏷️ [${timeStr}] 已调用setPageSwitching(true)`);
   });
 
   // Realtime 订阅对方发来的新消息和已读状态更新
@@ -271,7 +328,6 @@ export default function ChatPage() {
         const user_id = useAuthStore.getState().user?.id;
         if (!user_id) return;
 
-        const messagesApi = await import('@/api/messages');
         const currentMessages = useMessagesStore.getState().messages;
 
         // 增量拉取1:对方新消息——以「已知最后一条消息的服务端时间」为游标(而非本地时钟),
@@ -283,6 +339,7 @@ export default function ChatPage() {
         const peerNew = await messagesApi.listPeerMessagesSince(
           conversationId, user_id, new Date(cursor - 2000).toISOString(),
         );
+        console.log('[chat] 轮询增量拉取完成: 对方新消息', peerNew.length, '条(静态导入模式)');
 
         if (peerNew.length > 0) {
           const knownIds = new Set(useMessagesStore.getState().messages.map((m) => m.id));
@@ -353,13 +410,21 @@ export default function ChatPage() {
     if (!text || !conversationId) return;
 
     try {
-      console.log('[chat] 发送文字消息:', text);
+      console.log('[chat] 发送文字消息:', text, replyTo ? '引用消息:' + replyTo.id : '');
 
-      await sendMessage(conversationId, text, 'text');
-      console.log('[chat] 消息发送成功');
+      await sendMessage(
+        conversationId,
+        text,
+        'text',
+        undefined,
+        replyTo ? { id: replyTo.id, content: quoteSummary(replyTo) } : undefined,
+      );
+      console.log('[chat] 消息发送成功,重置计时器');
+      resetInactivityTimer();
 
-      // 清空输入框并保持焦点
+      // 清空输入框、引用状态并保持焦点
       setInputValue('');
+      setReplyTo(null);
       setInputFocus(true);
 
       // 发送后自动滚动到底部(使用递增计数器确保每次scrollTop值都不同,避免重复值不触发更新)
@@ -373,10 +438,19 @@ export default function ChatPage() {
     }
   };
 
+  // 引用气泡仅做展示与定位，不改变 ScrollView 高度；点击定位原消息用近似滚动
   const onSendImage = async (url: string) => {
     if (!conversationId) return;
     try {
-      await sendMessage(conversationId, '[图片]', 'image', url);
+      await sendMessage(
+        conversationId,
+        '[图片]',
+        'image',
+        url,
+        replyTo ? { id: replyTo.id, content: quoteSummary(replyTo) } : undefined,
+      );
+      resetInactivityTimer();
+      setReplyTo(null);
       // 发送后刷新列表
       await fetchMessages(conversationId);
       // 发送后保持焦点
@@ -445,6 +519,7 @@ export default function ChatPage() {
 
       // 发送消息
       await sendMessage(conversationId, `[${Math.ceil(duration / 1000)}s]`, 'voice', publicUrl);
+      resetInactivityTimer();
       // 发送后刷新列表
       await fetchMessages(conversationId);
       Taro.hideLoading();
@@ -590,9 +665,9 @@ export default function ChatPage() {
   // 【防误触】手指移动超过10px(滚动/滑动)立即取消长按判定——
   // 之前500ms纯计时,滚动时手指在任何消息上停顿都会误弹菜单。
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
-  const onMsgTouchStart = (e: any) => {
+  const onMsgTouchStart = (e: any, msgId: string) => {
     // 长按热区已收窄到气泡/勾选框,但事件仍会冒泡到行层——多选模式内
-    // 点空白处只该退出多选,绝不能再弹「多选删除」菜单
+    // 点空白处只该退出多选,绝不能再弹操作菜单
     if (selectMode) return;
     pendingLongPressRef.current = null;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
@@ -601,22 +676,30 @@ export default function ChatPage() {
     longPressTimerRef.current = setTimeout(() => {
       // 长按达成后抬手仍会补发一次click,置pending标记供行内消费(多选未开启时也会被ScrollView兜底消费)
       pendingLongPressRef.current = 'longpress';
-      console.log('[chat] 长按消息触发,弹出多选确认菜单');
+      console.log('[chat] 长按消息触发,弹出操作菜单:', msgId);
       Taro.vibrateShort({ type: 'light' }).catch(() => {});
       Taro.showActionSheet({
-        itemList: ['多选删除消息'],
-        itemColor: '#e64340',
+        itemList: ['回复', '多选删除消息'],
+        itemColor: '#3f3f46',
         success: (res) => {
           if (res.tapIndex === 0) {
+            // 进入引用回复：展示引用条并聚焦输入框
+            const target = messages.find((m) => m.id === msgId);
+            if (target) {
+              console.log('[chat] 用户选择回复消息:', target.id);
+              setReplyTo(target);
+              setInputFocus(true);
+            }
+          } else if (res.tapIndex === 1) {
             // 用户主动点菜单确认后才进入多选模式,此时不消费任何click,无需pending标记
             console.log('[chat] 用户确认进入多选删除模式');
             setSelectMode(true);
           } else {
-            console.log('[chat] 用户取消,不进入多选模式');
+            console.log('[chat] 用户取消,不进入任何模式');
           }
         },
         fail: () => {
-          console.log('[chat] ActionSheet被关闭,不进入多选模式');
+          console.log('[chat] ActionSheet被关闭,不进入任何模式');
         },
       });
     }, 650);
@@ -710,6 +793,7 @@ export default function ChatPage() {
           Taro.hideLoading();
           Taro.showToast({ title: `已删除${count}条`, icon: 'success', duration: 1200 });
           exitSelectMode();
+          resetInactivityTimer();
         } catch (e) {
           try { Taro.hideLoading(); } catch (_) {}
           console.error('[chat] 删除选中消息失败:', e);
@@ -735,9 +819,9 @@ export default function ChatPage() {
             // 同时删除会话本身
             const currentUser = useAuthStore.getState().user;
             if (currentUser) {
-              const conversationsApi = await import('@/api/conversations');
               await conversationsApi.deleteConversation(conversationId, currentUser.id);
             }
+            resetInactivityTimer();
             Taro.hideLoading();
             Taro.showToast({ title: '已清空', icon: 'success', duration: 1500 });
             // 延迟返回会话列表
@@ -767,6 +851,8 @@ export default function ChatPage() {
       console.log('[chat] 发送表情:', emoji, 'conversationId:', conversationId, 'userId:', currentUser.id);
       await sendMessage(conversationId, emoji, 'emoji');
       setShowEmojiPanel(false);
+      // 发送表情后不强制聚焦输入框,让用户可以继续选择其他表情
+      resetInactivityTimer();
       // 发送后刷新列表
       await fetchMessages(conversationId);
       // 显示成功提示
@@ -836,6 +922,24 @@ export default function ChatPage() {
     const h = String(d.getHours()).padStart(2, '0');
     const m = String(d.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day} ${h}:${m}`;
+  };
+
+  // 消息的引用摘要文本（非文字消息用类型占位符表示）
+  const quoteSummary = (msg: Message) => {
+    if (msg.content_type === 'text') return msg.content;
+    if (msg.content_type === 'emoji') return `[表情] ${msg.content}`;
+    if (msg.content_type === 'image') return '[图片]';
+    if (msg.content_type === 'voice') return '[语音]';
+    return msg.content;
+  };
+
+  // 引用气泡内点击：提示原消息（小程序内不做像素级定位，避免不可靠的滚动计算）
+  const onQuoteTap = (messageId: string) => {
+    const exists = messages.some((m) => m.id === messageId);
+    Taro.showToast({
+      title: exists ? '被引用的消息在上方' : '原消息已删除',
+      icon: 'none',
+    });
   };
 
   const renderMessageContent = (msg: Message, isMine: boolean) => {
@@ -1034,7 +1138,7 @@ export default function ChatPage() {
                         之前整行绑touchstart导致点消息旁空白也弹删除菜单) */}
                     <View
                       className="max-w-3/4"
-                      onTouchStart={(e) => onMsgTouchStart(e)}
+                      onTouchStart={(e) => onMsgTouchStart(e, msg.id)}
                       onTouchMove={onMsgTouchMove}
                       onTouchEnd={onMsgTouchEnd}
                       onTouchCancel={onMsgTouchEnd}
@@ -1044,6 +1148,17 @@ export default function ChatPage() {
                           selectMode && selectedIds.includes(msg.id) ? 'opacity-80' : ''
                         }`}
                       >
+                        {/* 引用回复气泡：展示被引消息内容快照，点击可定位原消息 */}
+                        {msg.reply_to_id && (
+                          <View
+                            onClick={(e) => { e.stopPropagation(); onQuoteTap(msg.reply_to_id!); }}
+                            className={`mb-1 rounded-lg px-2 py-1 ${isMine ? 'bg-white' : 'bg-muted'} ${isMine ? 'border-l-2 border-primary' : 'border-l-2 border-border'}`}
+                          >
+                            <Text className={`text-xs truncate ${isMine ? 'text-muted-foreground' : 'text-secondary-foreground'}`}>
+                              {msg.reply_to_content || '[原消息]'}
+                            </Text>
+                          </View>
+                        )}
                         {renderMessageContent(msg, isMine)}
                       </View>
                       <View className={`flex flex-row items-center gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -1106,6 +1221,22 @@ export default function ChatPage() {
         </View>
       )}
 
+      {/* 引用回复条(输入区上方) */}
+      {replyTo && !selectMode && (
+        <View className="flex flex-row items-center gap-2 px-3 py-2 bg-secondary border-t border-border">
+          <View className="i-lucide-corner-up-left w-4 h-4 shrink-0 text-muted-foreground" />
+          <Text className="text-xs text-muted-foreground flex-1 truncate">
+            回复 {quoteSummary(replyTo)}
+          </Text>
+          <View
+            onClick={(e) => { e.stopPropagation(); setReplyTo(null); }}
+            className="w-6 h-6 flex items-center justify-center shrink-0"
+          >
+            <View className="i-lucide-x w-4 h-4 text-muted-foreground" />
+          </View>
+        </View>
+      )}
+
       {/* 底部输入区 - 使用inline style确保H5端fixed定位生效 */}
       <View
         style={{
@@ -1143,17 +1274,20 @@ export default function ChatPage() {
                   const newValue = e.detail.value;
                   console.log('[chat] 输入框内容变化:', newValue);
                   setInputValue(newValue);
+                  resetInactivityTimer();
                 }}
                 onFocus={() => {
                   console.log('[chat] 输入框获得焦点');
                   setInputFocus(true);
+                  resetInactivityTimer();
                 }}
                 onBlur={() => {
                   console.log('[chat] 输入框失去焦点,当前键盘偏移:', keyboardOffset);
                 }}
                 onClick={(e) => {
-                  console.log('[chat] 输入框被点击');
+                  console.log('[chat] 输入框被点击,重置计时器');
                   e.stopPropagation();
+                  resetInactivityTimer();
                 }}
                 placeholder="输入消息"
                 placeholderClass="text-muted-foreground"
