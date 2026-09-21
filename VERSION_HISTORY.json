@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.60",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.58",
+    "date": "2026-09-21",
+    "note": "防护罩图片更新",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.57",
+    "date": "2026-09-21",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
     "version": "1.0.56",
     "date": "2026-09-21",
     "note": "同步meoo模板全部页面",
