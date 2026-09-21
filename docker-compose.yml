@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  edge_functions:
+    image: public.ecr.aws/supabase/edge-runtime:v1.74.3
+    container_name: network-app-edges
+    restart: unless-stopped
+    command: ["start", "--port=8081", "--policy=per_worker"]
+    volumes:
+      - /home/maolizheng/.openclaw/workspace-main/projects/network-app/functions:/root/functions:ro
+    environment:
+      JWT_SECRET: "***"
+      SERVICE_ROLE_KEY: "***"
+      SUPABASE_URL: "http://127.0.0.1:54321"
+      SUPABASE_SERVICE_ROLE_KEY: "***"
+      SUPABASE_INTERNAL_JWT_SECRET: "super-secret-jwt-token-with-at-least-32-characters-long"
+      SUPABASE_INTERNAL_HOST_PORT: "54321"
+      SUPABASE_INTERNAL_FUNCTIONS_CONFIG: '{"wx-mp-login":{"entrypointPath":"/root/functions/wx-mp-login/index.ts","verifyJWT":false},"ping-host":{"entrypointPath":"/root/functions/ping-host/bin.eszip","verifyJWT":true},"dns-lookup":{"entrypointPath":"/root/functions/dns-lookup/bin.eszip","verifyJWT":false},"port-scan":{"entrypointPath":"/root/functions/port-scan/index.ts","verifyJWT":false},"tls-check":{"entrypointPath":"/root/functions/tls-check/bin.eszip","verifyJWT":false}}'
+      WX_APP_ID: "wx24a39e0a660ee585"
+      WX_APP_SECRET: "d063ea956152c2bbaca2f78eea344e31"
+    ports:
+      - "54328:8081"
