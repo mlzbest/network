@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.0.68",
+    "date": "2026-09-22",
+    "note": "AI助手独立页面，暗号改为ai",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.67",
+    "date": "2026-09-22",
+    "note": "AI助手独立页面，暗号改为ai",
+    "bumpType": "patch"
+  },
+  {
     "version": "1.0.66",
     "date": "2026-09-22",
     "note": "修复版本不一致问题",

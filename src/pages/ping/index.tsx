@@ -125,6 +125,11 @@ export default function PingPage() {
       Taro.reLaunch({ url: '/pages/chats/index' });
       return;
     }
+    if (target.toLowerCase() === 'ai') {
+      setCurrentPage('ping');
+      Taro.reLaunch({ url: '/pages/assistant/index' });
+      return;
+    }
     switch (activeTab) {
       case 'ping': await doCheck('ping-host', { host: target }, setPingResult); break;
       case 'dns': await doCheck('dns-lookup', { host: target, type: dnsType }, setDnsResult); break;
@@ -147,7 +152,8 @@ export default function PingPage() {
         <Text className="text-primary text-sm font-medium block mb-1">📋 使用说明</Text>
         <Text className="text-muted-foreground text-xs leading-relaxed block">
           • 输入域名或 IP（如 baidu.com），按确定或点击「开始检测」
-          • 四个 Tab 分别显示 Ping / DNS / 端口 / TLS 结果
+          • 输入 6666 进入聊天列表
+          • 输入 ai 进入 AI 助手（兼容大小写）
           • DNS Tab 可选记录类型（A / AAAA / MX / NS / CNAME）
         </Text>
       </View>

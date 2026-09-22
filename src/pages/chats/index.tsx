@@ -25,56 +25,15 @@ const ChatsPage = () => {
   console.log('[chats] 🚀 ChatsPage 组件初始化');
   const { conversations, loading, loaded, fetchConversations, fetchProfiles, profiles, startChat, deleteConversation } = useChatsStore();
   const { user, loaded: authLoaded } = useAuthStore();
-  const [hiddenClickCount, setHiddenClickCount] = useState(0);
-  const hiddenClickTimerRef = useRef<any>(null);
   const inactivityTimerRef = useRef<any>(null);
-  const pollingTimerRef = useRef<any>(null); // 轮询计时器(用于实时更新会话列表)
-  const lastMessageAtMapRef = useRef<Map<string, string>>(new Map()); // 记录每个会话的最后消息时间戳
-  const timerIdCounter = useRef<number>(0); // 计时器ID计数器,用于验证setTimeout是否是当前有效的
-  const [timerStatus, setTimerStatus] = useState('未启动'); // 调试用:显示计时器状态
-
-  // 隐藏按钮点击处理(连续3次跳转到Ping页)
-  const handleHiddenClick = () => {
-    const newCount = hiddenClickCount + 1;
-    console.log(`[chats] 隐藏按钮点击次数: ${newCount}`);
-    setHiddenClickCount(newCount);
-    resetInactivityTimer();
-
-    // 清除之前的定时器
-    if (hiddenClickTimerRef.current) {
-      clearTimeout(hiddenClickTimerRef.current);
-    }
-
-    // 设置2秒内重置计数器
-    hiddenClickTimerRef.current = setTimeout(() => {
-      console.log('[chats] 隐藏按钮计数器重置');
-      setHiddenClickCount(0);
-    }, 2000);
-
-    // 达到3次点击
-    if (newCount >= 3) {
-      console.log('[chats] 触发隐藏功能: 跳转到Ping页面');
-      setHiddenClickCount(0);
-      if (hiddenClickTimerRef.current) {
-        clearTimeout(hiddenClickTimerRef.current);
-      }
-      Taro.showToast({ title: '进入网络检测', icon: 'success', duration: 1500 });
-      setTimeout(() => {
-        // 用 reLaunch 关闭所有页面再打开 ping，彻底清空页面栈，
-        // 避免回到 ping 后仍残留返回键 / 可右滑退回聊天列表
-        Taro.reLaunch({ url: '/pages/ping/index' });
-      }, 500);
-    }
-  };
-
-  // 记录计时器启动时间戳
+  const pollingTimerRef = useRef<any>(null);
+  const lastMessageAtMapRef = useRef<Map<string, string>>(new Map());
   const timerStartTimeRef = useRef<number>(0);
 
   // 120秒无操作自动返回网络页面
   const resetInactivityTimer = () => {
     const now = Date.now();
 
-    // 清除旧的计时器(如果存在)
     if (inactivityTimerRef.current) {
       clearInterval(inactivityTimerRef.current);
       inactivityTimerRef.current = null;
@@ -84,12 +43,10 @@ const ChatsPage = () => {
     const timeStr = new Date().toLocaleTimeString();
     console.log(`[chats] 🔥 [${timeStr}] 启动120秒计时器(setInterval模式), timerStartTimeRef=${now}`);
 
-    // 使用setInterval每1秒检查一次
     inactivityTimerRef.current = setInterval(() => {
       const checkTime = Date.now();
       const elapsed = checkTime - timerStartTimeRef.current;
 
-      // 检查当前页面是否仍是活跃页面
       const currentPage = getCurrentPage();
       if (currentPage !== 'chats') {
         console.log(`[chats] ⚠️ 当前活跃页面是${currentPage},不是chats,清除计时器`);
@@ -100,19 +57,17 @@ const ChatsPage = () => {
         return;
       }
 
-      // 检查是否超时
       if (elapsed >= 120000) {
         const timeoutTime = new Date().toLocaleTimeString();
         console.log(`[chats] ⏰ [${timeoutTime}] 确认超时(${Math.floor(elapsed / 1000)}秒),执行跳转`);
-        // 先清除计时器并重置时间戳,防止重复跳转
         if (inactivityTimerRef.current) {
           clearInterval(inactivityTimerRef.current);
           inactivityTimerRef.current = null;
         }
-        timerStartTimeRef.current = 0; // 重置时间戳,防止下次tick再次触发
+        timerStartTimeRef.current = 0;
         Taro.reLaunch({ url: '/pages/ping/index' });
       }
-    }, 1000); // 每1秒检查一次
+    }, 1000);
   };
 
   // 检查是否已超时,如果超时就跳转
@@ -132,9 +87,6 @@ const ChatsPage = () => {
 
   // 页面显示时:区分页面切换vs从后台切回
   useDidShow(() => {
-    // 兜底拦截：遮挡未解除期间(如点原生返回键/右滑)落到本页，立即弹回被遮挡页。
-    // 例外：若被遮挡页此刻已不在页面栈里(如遮挡后曾 reLaunch 去 ping 再暗号进入列表)，
-    // 弹回只会把用户刚打开的本页顶走，此时直接解除遮挡、正常停留本页。
     if (isShieldArmed() && getArmedRoute() !== 'pages/chats/index') {
       const armedInStack = Taro.getCurrentPages().some((p) => p.route === getArmedRoute());
       if (armedInStack) {
@@ -147,42 +99,33 @@ const ChatsPage = () => {
     }
     const timeStr = new Date().toLocaleTimeString();
     const currentPage = getCurrentPage();
-    // 是否"真正离开过 chats 页"：只有其他页面(onLoad 时)才会把 currentPage 改写；
-    // 小程序切后台不会改动它，因此不能据此判定为页面切换。
     const reallyLeft = currentPage !== '' && currentPage !== 'chats';
 
-    // 先强制清除任何可能存在的旧计时器
     if (inactivityTimerRef.current) {
       clearInterval(inactivityTimerRef.current);
       inactivityTimerRef.current = null;
       console.log(`[chats] 🛑 [${timeStr}] 强制清除旧计时器`);
     }
 
-    setCurrentPage('chats'); // 记录当前活跃页面
+    setCurrentPage('chats');
 
     console.log(`[chats] 📱 [${timeStr}] useDidShow 触发, currentPage=${currentPage}, reallyLeft=${reallyLeft}`);
-    setTimerStatus('已启动');
 
     if (!reallyLeft && timerStartTimeRef.current > 0) {
-      // 未离开过本页面(含切后台后回到本页):检查是否超时
       console.log(`[chats] 🔙 [${timeStr}] 回到本页(未切往其他页),检查是否超时`);
       checkTimeout();
     } else {
-      // 首次进入 / 从其他页面导航进入(如 ping 暗号进入):重新计时
       console.log(`[chats] 🆕 [${timeStr}] 新进入页面,重置计时器`);
       resetInactivityTimer();
     }
 
-    // 再检查登录状态
     if (!authLoaded) return;
     if (!user) {
       redirectToLogin();
       return;
     }
-    // 每次显示页面都刷新会话列表,确保登录后能看到最新数据
     fetchConversations();
     fetchProfiles();
-    // 启动智能轮询,每10秒检查一次是否有新消息
     startPolling();
   });
 
@@ -204,19 +147,16 @@ const ChatsPage = () => {
   useDidHide(() => {
     const timeStr = new Date().toLocaleTimeString();
     console.log(`[chats]  [${timeStr}] useDidHide 触发,清除计时器并标记为页面切换`);
-    setTimerStatus('页面隐藏');
 
-    // 清除计时器
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
       inactivityTimerRef.current = null;
       console.log(`[chats] 🛑 [${timeStr}] 已清除旧计时器`);
     }
 
-    setPageSwitching(true); // 标记为页面切换
+    setPageSwitching(true);
     console.log(`[chats] 🏷️ [${timeStr}] 已调用setPageSwitching(true)`);
 
-    // 清理轮询
     if (pollingTimerRef.current) {
       clearInterval(pollingTimerRef.current);
       pollingTimerRef.current = null;
@@ -234,7 +174,6 @@ const ChatsPage = () => {
         const currentUser = useAuthStore.getState().user;
         if (!currentUser) return;
 
-        // 步骤1: 轻量查询,只获取每个会话的last_message_at
         const { data: latestConversations, error } = await supabase
           .from('conversations')
           .select('id, last_message_at')
@@ -251,7 +190,6 @@ const ChatsPage = () => {
           return;
         }
 
-        // 步骤2: 检查是否有会话的last_message_at发生变化
         let hasChanges = false;
         const currentMap = new Map<string, string>();
 
@@ -266,11 +204,9 @@ const ChatsPage = () => {
           }
         }
 
-        // 步骤3: 只有当有变化时才刷新完整数据
         if (hasChanges) {
           console.log('[chats] 📥 检测到新消息,刷新完整会话列表');
           await fetchConversations();
-          // 更新时间戳映射
           lastMessageAtMapRef.current = currentMap;
         } else {
           console.log('[chats] ⏸️ 无新消息,跳过刷新');
@@ -278,7 +214,7 @@ const ChatsPage = () => {
       } catch (e) {
         console.error('[chats] 轮询失败:', e);
       }
-    }, 10000); // 每10秒轮询一次
+    }, 10000);
   };
 
   // 长按菜单
@@ -308,7 +244,6 @@ const ChatsPage = () => {
         }
       },
       fail: (err) => {
-        // 用户取消选择或点击遮罩层，静默处理
         if (err.errMsg?.includes('cancel')) {
           console.log('[chats] 用户取消长按菜单');
         }
@@ -361,7 +296,6 @@ const ChatsPage = () => {
         }
       },
       fail: (err) => {
-        // 用户取消选择或点击遮罩层，静默处理
         if (err.errMsg?.includes('cancel')) {
           console.log('[chats] 用户取消选择联系人');
         }
@@ -379,22 +313,13 @@ const ChatsPage = () => {
   return (
     <PrivacyShield>
     <View className="min-h-screen bg-background flex flex-col">
-      {/* 顶部导航栏 + AI 助手 */}
+      {/* 顶部导航栏 */}
       <View className="bg-card border-b border-border">
-        <View className="flex items-center justify-between px-4 py-3">
-          <View onClick={handleHiddenClick} className="cursor-pointer">
-            <Text className="text-xl font-bold text-foreground">网络查看</Text>
-          </View>
-          <View onClick={handleStartChat}>
+        {/* AI 助手按钮已移除，改为从 ping 页输入 ai 进入 */}
+        <View className="flex items-center px-4 py-3">
+          <View onClick={handleStartChat} className="cursor-pointer">
             <View className="i-lucide-message-circle-plus w-6 h-6 text-primary" />
           </View>
-        </View>
-        {/* AI 助手按钮 */}
-        <View
-          className="mx-4 mb-3 py-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center"
-          onClick={() => Taro.navigateTo({ url: '/pages/assistant/index' })}
-        >
-          <Text className="text-primary font-medium text-sm">AI 助手</Text>
         </View>
       </View>
 

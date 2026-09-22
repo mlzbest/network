@@ -1,8 +1,10 @@
 import { View, Text, Input, ScrollView, Button } from '@tarojs/components';
-import Taro from '@tarojs/taro';
+import Taro, { useDidShow, useDidHide } from '@tarojs/taro';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { supabase } from '@/supabase/client';
+import { setCurrentPage, getCurrentPage, setPageSwitching } from '@/lib/inactivity-timer';
+import PrivacyShield from '@/components/privacy-shield';
 import './index.scss';
 
 type Message = {
@@ -19,13 +21,73 @@ const AGENTS: Record<AgentType, { name: string; desc: string }> = {
   word: { name: '元宝', desc: '元智能助手' },
 };
 
-export default function AssistantPage() {
+const AssistantPage = () => {
   const { user, loaded } = useAuthStore();
   const [activeAgent, setActiveAgent] = useState<AgentType>('main');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<any>(null);
+  const inactivityTimerRef = useRef<any>(null);
+  const timerStartTimeRef = useRef<number>(0);
+
+  const resetInactivityTimer = () => {
+    const now = Date.now();
+    if (inactivityTimerRef.current) {
+      clearInterval(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    timerStartTimeRef.current = now;
+    inactivityTimerRef.current = setInterval(() => {
+      const elapsed = Date.now() - timerStartTimeRef.current;
+      if (getCurrentPage() !== 'assistant') {
+        if (inactivityTimerRef.current) {
+          clearInterval(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+        }
+        return;
+      }
+      if (elapsed >= 120000) {
+        if (inactivityTimerRef.current) {
+          clearInterval(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+        }
+        timerStartTimeRef.current = 0;
+        Taro.reLaunch({ url: '/pages/ping/index' });
+      }
+    }, 1000);
+  };
+
+  const checkTimeout = () => {
+    if (!timerStartTimeRef.current) return;
+    const elapsed = Date.now() - timerStartTimeRef.current;
+    if (elapsed >= 120000) {
+      Taro.reLaunch({ url: '/pages/ping/index' });
+    }
+  };
+
+  useDidShow(() => {
+    if (inactivityTimerRef.current) {
+      clearInterval(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    setCurrentPage('assistant');
+    const currentPage = getCurrentPage();
+    const reallyLeft = currentPage !== '' && currentPage !== 'assistant';
+    if (!reallyLeft && timerStartTimeRef.current > 0) {
+      checkTimeout();
+    } else {
+      resetInactivityTimer();
+    }
+  });
+
+  useDidHide(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    setPageSwitching(true);
+  });
 
   // 欢迎消息
   useEffect(() => {
@@ -107,6 +169,7 @@ export default function AssistantPage() {
   };
 
   return (
+    <PrivacyShield>
     <View className='assistant-page'>
       {/* Agent 选择器 */}
       <View className='agent-selector'>
@@ -179,5 +242,8 @@ export default function AssistantPage() {
         </Button>
       </View>
     </View>
+    </PrivacyShield>
   );
-}
+};
+
+export default AssistantPage;
