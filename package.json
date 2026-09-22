@@ -1,6 +1,6 @@
 {
   "name": "network-app",
-  "version": "1.0.60",
+  "version": "1.0.61",
   "private": true,
   "description": "Multi-platform Network Diagnostic & Chat Application",
   "meoo": {

@@ -1,5 +1,11 @@
 [
   {
+    "version": "1.0.61",
+    "date": "2026-09-22",
+    "note": "Remove native navigation bar titles",
+    "bumpType": "patch"
+  },
+  {
     "version": "1.0.60",
     "date": "2026-09-21",
     "note": "Update",

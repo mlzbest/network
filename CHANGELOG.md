@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.61] - 2026-09-22
+
+### Changed
+- Remove native navigation bar titles
+
 ## [1.0.60] - 2026-09-21
 
 ### Changed
