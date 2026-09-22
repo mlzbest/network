@@ -1,0 +1,30 @@
+.splash-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0a6b4a 0%, #0d7a55 60%, #118a62 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.splash-text {
+  font-size: 48px;
+  color: #ffffff;
+  font-family: 'PingFang SC', 'STKaiti', 'KaiTi', serif;
+  letter-spacing: 8px;
+  font-weight: 300;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+}
+
+.splash-page::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: radial-gradient(ellipse at 50% 120%, rgba(167, 243, 208, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
