@@ -5,7 +5,7 @@ import { redirectToLogin } from '@/lib/redirect-to-login';
 import { useRef, useEffect, useState } from 'react';
 import { setPageSwitching, getPageSwitching, resetPageSwitching, setCurrentPage, getCurrentPage } from '@/lib/inactivity-timer';
 import PrivacyShield from '@/components/privacy-shield';
-import { isShieldArmed, getArmedRoute } from '@/lib/shield-state';
+import { isShieldArmed, getArmedRoute, disarmShield } from '@/lib/shield-state';
 
 function getDisplayName(user: { user_metadata?: { nickname?: string; username?: string } } | null): string {
   const meta = user?.user_metadata ?? {};
@@ -22,6 +22,9 @@ export default function ProfilePage() {
   const timerStartTimeRef = useRef<number>(0); // 记录计时器启动时间戳
   const timerIdCounter = useRef<number>(0); // 计时器ID计数器,用于验证setTimeout是否是当前有效的
   const [timerStatus, setTimerStatus] = useState('未启动'); // 调试用:显示计时器状态
+
+  // 自定义导航栏：顶部需留出状态栏高度，避免内容被刘海/状态栏遮挡
+  const statusBarHeight = Taro.getSystemInfoSync().statusBarHeight || 0;
 
   // 120秒无操作自动返回网络页面
   const resetInactivityTimer = () => {
