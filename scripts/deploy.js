@@ -73,7 +73,7 @@ try {
 } catch (e) {
   console.log('   ℹ️  No changes to commit');
 }
-execSync('git push github-ssh main', { stdio: 'inherit' });
+execSync('git push origin main', { stdio: 'inherit' });
 
 // ========== Step 4: Upload to WeChat ==========
 console.log(`\n🔨 Step 4: Uploading to WeChat...`);
