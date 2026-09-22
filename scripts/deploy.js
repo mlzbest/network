@@ -82,6 +82,23 @@ execSync(
   { stdio: 'inherit' }
 );
 
+// ========== Step 5: Verify GitHub version matches uploaded version ==========
+console.log(`\n🔍 Step 5: Verifying GitHub version consistency...`);
+try {
+  const pkgLocal = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const localVersion = pkgLocal.version;
+  execSync('git fetch origin main', { encoding: 'utf8', stdio: 'pipe' });
+  const remotePkg = execSync('git show origin/main:package.json', { encoding: 'utf8', stdio: 'pipe' });
+  const remoteVersion = JSON.parse(remotePkg).version;
+  if (localVersion === remoteVersion) {
+    console.log(`   ✅ GitHub 版本一致: v${remoteVersion}`);
+  } else {
+    console.log(`   ⚠️  GitHub 版本不一致! 本地/上传: v${localVersion}, GitHub: v${remoteVersion}`);
+  }
+} catch (e) {
+  console.log(`   ⚠️  版本检查失败: ${e.message}`);
+}
+
 // ========== Done ==========
 console.log(`\n✅ Deployed v${newVersion} successfully!`);
 console.log(`   QR: dist/upload.png`);
