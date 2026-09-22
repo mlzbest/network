@@ -333,10 +333,10 @@ const ChatsPage = () => {
       <View className="bg-card border-b border-border" style={{ paddingTop: `${statusBarHeight}px` }}>
         {/* AI 助手按钮已移除，改为从 ping 页输入 ai 进入 */}
         <View className="flex items-center justify-between px-4 py-3">
-          <Text className="text-sm text-muted-foreground font-medium">信息列表</Text>
-          <View onClick={handleExitPingClick} className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+          <View onClick={handleExitPingClick} className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-primary/10" style={{ marginLeft: '-16px' }}>
             <View className="i-lucide-message-circle-plus w-6 h-6 text-primary" />
           </View>
+          <Text onClick={handleExitPingClick} className="text-sm text-muted-foreground font-medium cursor-pointer">信息列表</Text>
         </View>
       </View>
 
