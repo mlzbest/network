@@ -378,25 +378,31 @@ const ChatsPage = () => {
 
   return (
     <PrivacyShield>
-    <View className="min-h-screen bg-background">
-      {/* 调试信息:显示计时器状态 */}
-      {/* 计时器状态条已隐藏,功能保留 */}
-      {/* <View className="px-4 py-2 bg-yellow-100 border-b border-yellow-300">
-        <Text className="text-xs text-yellow-800">⏱️ 计时器状态: {timerStatus}</Text>
-      </View> */}
-      <View className="flex items-center justify-between px-4 py-3 bg-card border-b border-border">
-        <View onClick={handleHiddenClick} className="cursor-pointer">
-          <Text className="text-xl font-bold text-foreground">网络查看</Text>
+    <View className="min-h-screen bg-background flex flex-col">
+      {/* 顶部导航栏 + AI 助手 */}
+      <View className="bg-card border-b border-border">
+        <View className="flex items-center justify-between px-4 py-3">
+          <View onClick={handleHiddenClick} className="cursor-pointer">
+            <Text className="text-xl font-bold text-foreground">网络查看</Text>
+          </View>
+          <View onClick={handleStartChat}>
+            <View className="i-lucide-message-circle-plus w-6 h-6 text-primary" />
+          </View>
         </View>
-        <View onClick={handleStartChat}>
-          <View className="i-lucide-message-circle-plus w-6 h-6 text-primary" />
+        {/* AI 助手按钮 */}
+        <View
+          className="mx-4 mb-3 py-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center"
+          onClick={() => Taro.navigateTo({ url: '/pages/assistant/index' })}
+        >
+          <Text className="text-primary font-medium text-sm">AI 助手</Text>
         </View>
       </View>
 
+      <View className="flex-1">
       {conversations.length === 0 ? (
-        <View className="flex flex-col items-center justify-center py-20">
-          <View className="i-lucide-message-square w-16 h-16 text-muted-foreground" />
-          <Text className="text-muted-foreground mt-4">还没有会话，去和在线的人聊聊吧</Text>
+        <View className="flex flex-col items-center justify-center py-16">
+          <View className="i-lucide-message-square w-12 h-12 text-muted-foreground" />
+          <Text className="text-muted-foreground mt-3 text-sm">还没有会话，去和在线的人聊聊吧</Text>
         </View>
       ) : (
         <View>
@@ -442,7 +448,7 @@ const ChatsPage = () => {
           })}
         </View>
       )}
-    </View>
+      </View>
     </PrivacyShield>
   );
 };
