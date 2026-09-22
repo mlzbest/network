@@ -30,6 +30,9 @@ const ChatsPage = () => {
   const lastMessageAtMapRef = useRef<Map<string, string>>(new Map());
   const timerStartTimeRef = useRef<number>(0);
 
+  // 自定义导航栏：顶部需留出状态栏高度，避免内容被刘海/状态栏遮挡
+  const statusBarHeight = Taro.getSystemInfoSync().statusBarHeight || 0;
+
   // 120秒无操作自动返回网络页面
   const resetInactivityTimer = () => {
     const now = Date.now();
@@ -314,7 +317,7 @@ const ChatsPage = () => {
     <PrivacyShield>
     <View className="min-h-screen bg-background flex flex-col">
       {/* 顶部导航栏 */}
-      <View className="bg-card border-b border-border">
+      <View className="bg-card border-b border-border" style={{ paddingTop: `${statusBarHeight}px` }}>
         {/* AI 助手按钮已移除，改为从 ping 页输入 ai 进入 */}
         <View className="flex items-center px-4 py-3">
           <View onClick={handleStartChat} className="cursor-pointer">
