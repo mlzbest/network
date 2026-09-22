@@ -30,6 +30,8 @@ export default function ChatPage() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [hiddenClickCount, setHiddenClickCount] = useState(0);
+  const [exitClickCount, setExitClickCount] = useState(0);
+  const exitClickTimerRef = useRef<any>(null);
   const [timerStatus, setTimerStatus] = useState('未启动'); // 调试用:显示计时器状态
   const timerStartTimeRef = useRef<number>(0); // 记录计时器启动时间戳
   const keyboardOffset = useKeyboardOffset();
@@ -611,6 +613,34 @@ export default function ChatPage() {
       setPlayingVoiceId(null);
       Taro.showToast({ title: '播放失败', icon: 'none' });
     });
+  };
+
+  // 可见退出按钮点击处理(连续3次返回Ping页)
+  const handleExitClick = () => {
+    const newCount = exitClickCount + 1;
+    console.log(`[chat] 退出按钮点击次数: ${newCount}`);
+    setExitClickCount(newCount);
+
+    if (exitClickTimerRef.current) {
+      clearTimeout(exitClickTimerRef.current);
+    }
+
+    exitClickTimerRef.current = setTimeout(() => {
+      console.log('[chat] 退出按钮计数器重置');
+      setExitClickCount(0);
+    }, 2000);
+
+    if (newCount >= 3) {
+      console.log('[chat] 触发退出功能: 返回Ping页面');
+      setExitClickCount(0);
+      if (exitClickTimerRef.current) {
+        clearTimeout(exitClickTimerRef.current);
+      }
+      Taro.showToast({ title: '返回网络检测', icon: 'success', duration: 1500 });
+      setTimeout(() => {
+        Taro.reLaunch({ url: '/pages/ping/index' });
+      }, 500);
+    }
   };
 
   // 隐藏按钮点击处理(连续3次返回Ping页)
@@ -1309,6 +1339,14 @@ export default function ChatPage() {
               className={`flex items-center justify-center w-9 h-9 rounded-full border-2 border-muted-foreground ${uploading ? 'opacity-50' : ''}`}
             >
               <View className="i-lucide-plus w-5 h-5 text-muted-foreground" />
+            </View>
+
+            {/* 可见退出按钮(连续3次点击返回Ping页) */}
+            <View
+              onClick={(e) => { e.stopPropagation(); handleExitClick(); }}
+              className="flex items-center justify-center w-9 h-9 rounded-full border-2 border-destructive bg-destructive/10"
+            >
+              <View className="i-lucide-log-out w-5 h-5 text-destructive" />
             </View>
           </View>
         </Form>

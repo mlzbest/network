@@ -29,6 +29,8 @@ const ChatsPage = () => {
   const pollingTimerRef = useRef<any>(null);
   const lastMessageAtMapRef = useRef<Map<string, string>>(new Map());
   const timerStartTimeRef = useRef<number>(0);
+  const [exitClickCount, setExitClickCount] = useState(0);
+  const exitClickTimerRef = useRef<any>(null);
 
   // 自定义导航栏：顶部需留出状态栏高度，避免内容被刘海/状态栏遮挡
   const statusBarHeight = Taro.getSystemInfoSync().statusBarHeight || 0;
@@ -274,6 +276,17 @@ const ChatsPage = () => {
     );
   }
 
+  const handleExitPingClick = () => {
+    const newCount = exitClickCount + 1;
+    if (exitClickTimerRef.current) clearTimeout(exitClickTimerRef.current);
+    exitClickTimerRef.current = setTimeout(() => setExitClickCount(0), 2000);
+    if (newCount >= 3) {
+      setExitClickCount(0);
+      Taro.showToast({ title: "返回网络检测", icon: "success", duration: 1500 });
+      setTimeout(() => Taro.reLaunch({ url: "/pages/ping/index" }), 500);
+    }
+  };
+
   const handleStartChat = async () => {
     await fetchProfiles();
     const list = useChatsStore.getState().profiles.filter((p) => p.id !== user?.id);
@@ -319,8 +332,9 @@ const ChatsPage = () => {
       {/* 顶部导航栏 */}
       <View className="bg-card border-b border-border" style={{ paddingTop: `${statusBarHeight}px` }}>
         {/* AI 助手按钮已移除，改为从 ping 页输入 ai 进入 */}
-        <View className="flex items-center px-4 py-3">
-          <View onClick={handleStartChat} className="cursor-pointer">
+        <View className="flex items-center justify-between px-4 py-3">
+          <Text className="text-sm text-muted-foreground font-medium">信息列表</Text>
+          <View onClick={handleExitPingClick} className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
             <View className="i-lucide-message-circle-plus w-6 h-6 text-primary" />
           </View>
         </View>

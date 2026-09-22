@@ -61,7 +61,18 @@ export default function PrivacyShield({ children }: { children: ReactNode }) {
     // 回到前台：保持遮挡，等待用户点击解除（不自动关闭）
     const onShow = () => {
       if (!isShieldArmed()) return;
-      console.log('[PrivacyShield] onAppShow 触发，维持遮挡待用户确认, 本页:', ownRoute);
+      // 检查当前栈顶页面是否仍是遮挡归属页面
+      const pages = Taro.getCurrentPages();
+      const topRoute = pages[pages.length - 1]?.route || '';
+      console.log('[PrivacyShield] onAppShow 触发，维持遮挡待用户确认, 本页:', ownRoute, '栈顶:', topRoute);
+      // 如果栈顶页面不是遮挡归属页面，说明用户已通过其他方式离开，清除遮挡
+      if (topRoute !== ownRoute) {
+        console.log('[PrivacyShield] 栈顶页面已变化，清除遮挡状态');
+        disarmShield();
+        return;
+      }
+      // 否则保持遮挡状态
+      setShielded(true);
     };
 
     Taro.onAppHide(onHide);
