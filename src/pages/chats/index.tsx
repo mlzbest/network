@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import Taro, { useDidShow, useDidHide, usePullDownRefresh } from '@tarojs/taro';
 import { useChatsStore } from '@/store/chats-store';
 import { useAuthStore } from '@/store/auth-store';
@@ -334,8 +334,8 @@ const ChatsPage = () => {
         {/* AI 助手按钮已移除，改为从 ping 页输入 ai 进入 */}
         <View className="flex items-center gap-2 px-4 py-3">
           <Text onClick={handleExitPingClick} className="text-sm text-muted-foreground font-medium cursor-pointer">信息列表</Text>
-          <View onClick={handleStartChat} className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-            <View className="i-lucide-message-circle-plus w-6 h-6 text-primary" />
+          <View onClick={handleStartChat} className="cursor-pointer">
+            <Image src="/src/assets/add-circle.png" className="w-8 h-8" mode="aspectFit" />
           </View>
         </View>
       </View>
