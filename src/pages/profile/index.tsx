@@ -175,7 +175,7 @@ export default function ProfilePage() {
 
   return (
     <PrivacyShield>
-    <View className="min-h-screen bg-background flex flex-col items-center pt-16 px-6">
+    <View className="min-h-screen bg-background flex flex-col items-center px-6" style={{ paddingTop: `${statusBarHeight + 24}px` }}>
       {/* 调试信息:显示计时器状态 */}
       {/* 计时器状态条已隐藏,功能保留 */}
       {/* <View className="fixed top-0 left-0 right-0 px-4 py-2 bg-yellow-100 border-b border-yellow-300 z-50">
