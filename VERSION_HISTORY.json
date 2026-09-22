@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.0.77",
+    "date": "2026-09-22",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.76",
+    "date": "2026-09-22",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
+    "version": "1.0.75",
+    "date": "2026-09-22",
+    "note": "Update",
+    "bumpType": "patch"
+  },
+  {
     "version": "1.0.74",
     "date": "2026-09-22",
     "note": "Update",
