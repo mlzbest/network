@@ -335,7 +335,7 @@ const ChatsPage = () => {
         <View className="flex items-center gap-2 px-4 py-3">
           <Text onClick={handleExitPingClick} className="text-sm text-muted-foreground font-medium cursor-pointer">信息列表</Text>
           <View onClick={handleStartChat} className="cursor-pointer">
-            <Image src="/src/assets/add-circle.png" className="w-8 h-8" mode="aspectFit" />
+            <Image src={require('@/assets/add-circle.jpg')} className="w-8 h-8" mode="aspectFit" />
           </View>
         </View>
       </View>
