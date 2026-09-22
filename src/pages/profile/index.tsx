@@ -187,7 +187,14 @@ export default function ProfilePage() {
       <Text className="text-xl font-bold text-foreground mb-2">{name}</Text>
 
       <View
-        className="w-full bg-card border border-border rounded-lg py-3 flex items-center justify-center mt-12"
+        className="w-full bg-card border border-border rounded-lg py-3 flex items-center justify-center mt-6"
+        onClick={() => Taro.navigateTo({ url: '/pages/assistant/index' })}
+      >
+        <Text className="text-primary font-medium">AI 助手</Text>
+      </View>
+
+      <View
+        className="w-full bg-card border border-border rounded-lg py-3 flex items-center justify-center mt-2"
         onClick={handleSignOut}
       >
         <Text className="text-destructive font-medium">退出登录</Text>
