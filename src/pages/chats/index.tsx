@@ -449,6 +449,7 @@ const ChatsPage = () => {
         </View>
       )}
       </View>
+    </View>
     </PrivacyShield>
   );
 };
