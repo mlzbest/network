@@ -1,5 +1,11 @@
 [
   {
+    "version": "1.0.88",
+    "date": "2026-09-22",
+    "note": "fix: 信息列表3击返回ping页面(ref修复)",
+    "bumpType": "patch"
+  },
+  {
     "version": "1.0.87",
     "date": "2026-09-22",
     "note": "Update",

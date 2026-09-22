@@ -29,7 +29,7 @@ const ChatsPage = () => {
   const pollingTimerRef = useRef<any>(null);
   const lastMessageAtMapRef = useRef<Map<string, string>>(new Map());
   const timerStartTimeRef = useRef<number>(0);
-  const [exitClickCount, setExitClickCount] = useState(0);
+  const exitClickCountRef = useRef(0);
   const exitClickTimerRef = useRef<any>(null);
 
   // 自定义导航栏：顶部需留出状态栏高度，避免内容被刘海/状态栏遮挡
@@ -277,11 +277,11 @@ const ChatsPage = () => {
   }
 
   const handleExitPingClick = () => {
-    const newCount = exitClickCount + 1;
+    exitClickCountRef.current += 1;
     if (exitClickTimerRef.current) clearTimeout(exitClickTimerRef.current);
-    exitClickTimerRef.current = setTimeout(() => setExitClickCount(0), 2000);
-    if (newCount >= 3) {
-      setExitClickCount(0);
+    exitClickTimerRef.current = setTimeout(() => { exitClickCountRef.current = 0; }, 2000);
+    if (exitClickCountRef.current >= 3) {
+      exitClickCountRef.current = 0;
       Taro.showToast({ title: "返回网络检测", icon: "success", duration: 1500 });
       setTimeout(() => Taro.reLaunch({ url: "/pages/ping/index" }), 500);
     }
