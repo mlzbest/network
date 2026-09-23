@@ -23,7 +23,7 @@ function getDisplayName(nickname: string | null, username: string | null): strin
 }
 
 const ChatsPage = () => {
-  console.log('[chats] 🚀 ChatsPage 组件初始化');
+  [DEV]('[chats] 🚀 ChatsPage 组件初始化');
   const { conversations, loading, loaded, fetchConversations, fetchProfiles, profiles, startChat, deleteConversation } = useChatsStore();
   const { user, loaded: authLoaded } = useAuthStore();
   const inactivityTimerRef = useRef<any>(null);
@@ -47,7 +47,7 @@ const ChatsPage = () => {
 
     timerStartTimeRef.current = now;
     const timeStr = new Date().toLocaleTimeString();
-    console.log(`[chats] 🔥 [${timeStr}] 启动120秒计时器(setInterval模式), timerStartTimeRef=${now}`);
+    [DEV](`[chats] 🔥 [${timeStr}] 启动120秒计时器(setInterval模式), timerStartTimeRef=${now}`);
 
     inactivityTimerRef.current = setInterval(() => {
       const checkTime = Date.now();
@@ -55,7 +55,7 @@ const ChatsPage = () => {
 
       const currentPage = getCurrentPage();
       if (currentPage !== 'chats') {
-        console.log(`[chats] ⚠️ 当前活跃页面是${currentPage},不是chats,清除计时器`);
+        [DEV](`[chats] ⚠️ 当前活跃页面是${currentPage},不是chats,清除计时器`);
         if (inactivityTimerRef.current) {
           clearInterval(inactivityTimerRef.current);
           inactivityTimerRef.current = null;
@@ -65,7 +65,7 @@ const ChatsPage = () => {
 
       if (elapsed >= 120000) {
         const timeoutTime = new Date().toLocaleTimeString();
-        console.log(`[chats] ⏰ [${timeoutTime}] 确认超时(${Math.floor(elapsed / 1000)}秒),执行跳转`);
+        [DEV](`[chats] ⏰ [${timeoutTime}] 确认超时(${Math.floor(elapsed / 1000)}秒),执行跳转`);
         if (inactivityTimerRef.current) {
           clearInterval(inactivityTimerRef.current);
           inactivityTimerRef.current = null;
@@ -81,13 +81,13 @@ const ChatsPage = () => {
     if (!timerStartTimeRef.current) return;
     const elapsed = Date.now() - timerStartTimeRef.current;
     const timeStr = new Date().toLocaleTimeString();
-    console.log(`[chats] 🔍 [${timeStr}] 检查超时: 已过去 ${Math.floor(elapsed / 1000)}秒`);
+    [DEV](`[chats] 🔍 [${timeStr}] 检查超时: 已过去 ${Math.floor(elapsed / 1000)}秒`);
     if (elapsed >= 120000) {
-      console.log(`[chats] ⚠️ [${timeStr}] 检测到已超时(${Math.floor(elapsed / 1000)}秒),立即跳转`);
+      [DEV](`[chats] ⚠️ [${timeStr}] 检测到已超时(${Math.floor(elapsed / 1000)}秒),立即跳转`);
       Taro.reLaunch({ url: '/pages/ping/index' });
     } else {
       const remaining = Math.ceil((120000 - elapsed) / 1000);
-      console.log(`[chats] ℹ️ [${timeStr}] 未超时,剩余 ${remaining}秒`);
+      [DEV](`[chats] ℹ️ [${timeStr}] 未超时,剩余 ${remaining}秒`);
     }
   };
 
@@ -96,11 +96,11 @@ const ChatsPage = () => {
     if (isShieldArmed() && getArmedRoute() !== 'pages/chats/index') {
       const armedInStack = Taro.getCurrentPages().some((p) => p.route === getArmedRoute());
       if (armedInStack) {
-        console.log('[chats] 检测到遮挡未解除, 兜底弹回:', getArmedRoute());
+        [DEV]('[chats] 检测到遮挡未解除, 兜底弹回:', getArmedRoute());
         Taro.reLaunch({ url: '/' + getArmedRoute() });
         return;
       }
-      console.log('[chats] 遮挡归属页已不在页面栈, 解除遮挡并停留本页');
+      [DEV]('[chats] 遮挡归属页已不在页面栈, 解除遮挡并停留本页');
       disarmShield();
     }
     const timeStr = new Date().toLocaleTimeString();
@@ -110,18 +110,18 @@ const ChatsPage = () => {
     if (inactivityTimerRef.current) {
       clearInterval(inactivityTimerRef.current);
       inactivityTimerRef.current = null;
-      console.log(`[chats] 🛑 [${timeStr}] 强制清除旧计时器`);
+      [DEV](`[chats] 🛑 [${timeStr}] 强制清除旧计时器`);
     }
 
     setCurrentPage('chats');
 
-    console.log(`[chats] 📱 [${timeStr}] useDidShow 触发, currentPage=${currentPage}, reallyLeft=${reallyLeft}`);
+    [DEV](`[chats] 📱 [${timeStr}] useDidShow 触发, currentPage=${currentPage}, reallyLeft=${reallyLeft}`);
 
     if (!reallyLeft && timerStartTimeRef.current > 0) {
-      console.log(`[chats] 🔙 [${timeStr}] 回到本页(未切往其他页),检查是否超时`);
+      [DEV](`[chats] 🔙 [${timeStr}] 回到本页(未切往其他页),检查是否超时`);
       checkTimeout();
     } else {
-      console.log(`[chats] 🆕 [${timeStr}] 新进入页面,重置计时器`);
+      [DEV](`[chats] 🆕 [${timeStr}] 新进入页面,重置计时器`);
       resetInactivityTimer();
     }
 
@@ -145,23 +145,23 @@ const ChatsPage = () => {
         }
       }
       lastMessageAtMapRef.current = newMap;
-      console.log('[chats] 📊 已更新', newMap.size, '个会话的时间戳映射');
+      [DEV]('[chats] 📊 已更新', newMap.size, '个会话的时间戳映射');
     }
   }, [conversations]);
 
   // 页面隐藏时:清除计时器,标记为页面切换
   useDidHide(() => {
     const timeStr = new Date().toLocaleTimeString();
-    console.log(`[chats]  [${timeStr}] useDidHide 触发,清除计时器并标记为页面切换`);
+    [DEV](`[chats]  [${timeStr}] useDidHide 触发,清除计时器并标记为页面切换`);
 
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current);
       inactivityTimerRef.current = null;
-      console.log(`[chats] 🛑 [${timeStr}] 已清除旧计时器`);
+      [DEV](`[chats] 🛑 [${timeStr}] 已清除旧计时器`);
     }
 
     setPageSwitching(true);
-    console.log(`[chats] 🏷️ [${timeStr}] 已调用setPageSwitching(true)`);
+    [DEV](`[chats] 🏷️ [${timeStr}] 已调用setPageSwitching(true)`);
 
     if (pollingTimerRef.current) {
       clearInterval(pollingTimerRef.current);
@@ -174,7 +174,7 @@ const ChatsPage = () => {
     if (pollingTimerRef.current) {
       clearInterval(pollingTimerRef.current);
     }
-    console.log('[chats] 🔄 启动智能轮询模式,每10秒检查一次是否有新消息');
+    [DEV]('[chats] 🔄 启动智能轮询模式,每10秒检查一次是否有新消息');
     pollingTimerRef.current = setInterval(async () => {
       try {
         const currentUser = useAuthStore.getState().user;
@@ -192,7 +192,7 @@ const ChatsPage = () => {
         }
 
         if (!latestConversations || latestConversations.length === 0) {
-          console.log('[chats] 轮询: 没有会话');
+          [DEV]('[chats] 轮询: 没有会话');
           return;
         }
 
@@ -206,16 +206,16 @@ const ChatsPage = () => {
           const oldTime = lastMessageAtMapRef.current.get(conv.id) || '';
           if (lastTime !== oldTime) {
             hasChanges = true;
-            console.log(`[chats] 检测到会话 ${conv.id.substring(0,8)}... 有新消息: ${oldTime} → ${lastTime}`);
+            [DEV](`[chats] 检测到会话 ${conv.id.substring(0,8)}... 有新消息: ${oldTime} → ${lastTime}`);
           }
         }
 
         if (hasChanges) {
-          console.log('[chats] 📥 检测到新消息,刷新完整会话列表');
+          [DEV]('[chats] 📥 检测到新消息,刷新完整会话列表');
           await fetchConversations();
           lastMessageAtMapRef.current = currentMap;
         } else {
-          console.log('[chats] ⏸️ 无新消息,跳过刷新');
+          [DEV]('[chats] ⏸️ 无新消息,跳过刷新');
         }
       } catch (e) {
         console.error('[chats] 轮询失败:', e);
@@ -230,7 +230,7 @@ const ChatsPage = () => {
       itemList: ['删除聊天记录'],
       success: async (res) => {
         if (res.tapIndex === 0) {
-          console.log('[chats] 准备删除会话:', item.id, '对方:', name);
+          [DEV]('[chats] 准备删除会话:', item.id, '对方:', name);
           Taro.showModal({
             title: '确认删除',
             content: `确定要删除与"${name}"的聊天记录吗?`,
@@ -251,7 +251,7 @@ const ChatsPage = () => {
       },
       fail: (err) => {
         if (err.errMsg?.includes('cancel')) {
-          console.log('[chats] 用户取消长按菜单');
+          [DEV]('[chats] 用户取消长按菜单');
         }
       },
     });
@@ -314,7 +314,7 @@ const ChatsPage = () => {
       },
       fail: (err) => {
         if (err.errMsg?.includes('cancel')) {
-          console.log('[chats] 用户取消选择联系人');
+          [DEV]('[chats] 用户取消选择联系人');
         }
       },
     });

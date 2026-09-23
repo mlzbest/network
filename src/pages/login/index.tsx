@@ -24,7 +24,7 @@ export default function LoginPage() {
     }
     timerStartTimeRef.current = Date.now();
     inactivityTimerRef.current = setTimeout(() => {
-      console.log('[login] ⏰ 无操作120秒，自动返回Ping页');
+      [DEV]('[login] ⏰ 无操作120秒，自动返回Ping页');
       inactivityTimerRef.current = null;
       timerStartTimeRef.current = 0;
       Taro.reLaunch({ url: '/pages/ping/index' });
@@ -40,7 +40,7 @@ export default function LoginPage() {
         inactivityTimerRef.current = null;
       }
       timerStartTimeRef.current = 0;
-      console.log('[login] ⏰ 进入时已超时，立即返回Ping页');
+      [DEV]('[login] ⏰ 进入时已超时，立即返回Ping页');
       Taro.reLaunch({ url: '/pages/ping/index' });
     }
   };
@@ -76,20 +76,20 @@ export default function LoginPage() {
   useEffect(() => {
     const target = consumeReturnPath();
     const goBack = () => {
-      console.log('[login] 检测到已登录，准备跳转到:', target);
+      [DEV]('[login] 检测到已登录，准备跳转到:', target);
       Taro.reLaunch({ url: target });
     };
 
     // 订阅 store 变化
     const unsubscribe = useAuthStore.subscribe((state, prev) => {
       if (state.user && !prev.user) {
-        console.log('[login] subscribe 检测到 user 变化，触发跳转');
+        [DEV]('[login] subscribe 检测到 user 变化，触发跳转');
         goBack();
         return;
       }
       // 登录过期:曾经已登录(user非空)被鉴权链路清成未登录 → 自动跳回ping入口页
       if (!state.user && prev.user && prev.loaded) {
-        console.log('[login] ⏰ 检测到登录态过期，自动跳转到ping页面');
+        [DEV]('[login] ⏰ 检测到登录态过期，自动跳转到ping页面');
         Taro.reLaunch({ url: '/pages/ping/index' });
       }
     });
@@ -127,7 +127,7 @@ export default function LoginPage() {
         clearTimeout(timeoutId);
         // 登录成功后立即隐藏 loading，即使跳转有延迟也不会一直转圈
         Taro.hideLoading();
-        console.log('[login] 登录成功，等待 store 更新触发跳转');
+        [DEV]('[login] 登录成功，等待 store 更新触发跳转');
       }
     } catch (e) {
       if (!timedOut) {
