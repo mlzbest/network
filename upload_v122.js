@@ -3,7 +3,7 @@ const https = require('https');
 
 const APPID = 'wx24a39e0a660ee585';
 const SECRET = 'd063ea956152c2bbaca2f78eea344e31';
-const VERSION = '1.0.122';
+const VERSION = '1.0.123';
 
 function getToken() {
   return new Promise((resolve, reject) => {
@@ -39,7 +39,7 @@ async function main() {
     accessToken: token,
     version: VERSION,
     userVersion: VERSION,
-    userDesc: 'v' + VERSION + ' - DEV console.log fix',
+    userDesc: 'v' + VERSION,
     onProgressUpdate: () => {}
   });
   console.log('Upload result:', JSON.stringify(result));
