@@ -328,7 +328,7 @@ const ChatsPage = () => {
 
   return (
     <PrivacyShield>
-    <View className="h-screen bg-background flex flex-col">
+    <View className="min-h-screen bg-background flex flex-col">
       {/* 顶部导航栏 */}
       <View className="bg-card border-b border-border" style={{ paddingTop: `${statusBarHeight}px` }}>
         {/* AI 助手按钮已移除，改为从 ping 页输入 ai 进入 */}
@@ -340,9 +340,8 @@ const ChatsPage = () => {
         </View>
       </View>
 
-      <View className="flex-1 overflow-hidden">
       {conversations.length === 0 ? (
-        <View className="flex flex-col items-center justify-center py-16 h-full">
+        <View className="flex flex-col items-center justify-center py-20">
           <View className="i-lucide-message-square w-12 h-12 text-muted-foreground" />
           <Text className="text-muted-foreground mt-3 text-sm">还没有会话，去和在线的人聊聊吧</Text>
         </View>
@@ -390,7 +389,6 @@ const ChatsPage = () => {
           })}
         </View>
       )}
-      </View>
     </View>
     </PrivacyShield>
   );
