@@ -4,6 +4,7 @@ import { useChatsStore } from '@/store/chats-store';
 import { useAuthStore } from '@/store/auth-store';
 import { redirectToLogin } from '@/lib/redirect-to-login';
 import { useState, useRef, useEffect } from 'react';
+
 import { setPageSwitching, getPageSwitching, resetPageSwitching, setCurrentPage, getCurrentPage } from '@/lib/inactivity-timer';
 import { supabase } from '@/supabase/client';
 import PrivacyShield from '@/components/privacy-shield';
@@ -335,7 +336,7 @@ const ChatsPage = () => {
         <View className="flex items-center gap-2 px-4 py-3">
           <Text onClick={handleExitPingClick} className="text-sm text-muted-foreground font-medium cursor-pointer">信息列表</Text>
           <View onClick={handleStartChat} className="cursor-pointer">
-            <Image src={require('@/assets/add-circle.jpg')} className="w-8 h-8" mode="aspectFit" />
+            <View className="i-lucide-plus-circle w-8 h-8 text-muted-foreground" />
           </View>
         </View>
       </View>
