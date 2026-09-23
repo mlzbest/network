@@ -1,3 +1,4 @@
+import { DEV } from '../../utils/dev';
 import { View, Text } from '@tarojs/components';
 import Taro, { useDidShow, useDidHide } from '@tarojs/taro';
 import { useAuthStore } from '@/store/auth-store';

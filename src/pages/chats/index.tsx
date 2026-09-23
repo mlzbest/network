@@ -1,3 +1,4 @@
+import { DEV } from '../../utils/dev';
 import { View, Text, Image } from '@tarojs/components';
 import Taro, { useDidShow, useDidHide, usePullDownRefresh } from '@tarojs/taro';
 import { useChatsStore } from '@/store/chats-store';

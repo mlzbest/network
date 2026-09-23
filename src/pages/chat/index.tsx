@@ -1,3 +1,4 @@
+import { DEV } from '../../utils/dev';
 import { View, Text, Input, ScrollView, Image, Form, Button } from '@tarojs/components';
 import Taro, { useLoad, useRouter, useDidShow, useDidHide } from '@tarojs/taro';
 import { useState, useEffect, useRef } from 'react';
