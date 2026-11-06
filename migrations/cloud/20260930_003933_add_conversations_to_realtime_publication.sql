@@ -1,0 +1,3 @@
+-- 云端 Realtime 通道未公开，supabase_realtime PUBLICATION 不存在。
+-- 原 Supabase 专属：ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
+-- 此文件在云端无对应操作，仅作存档占位。

@@ -1,0 +1,20 @@
+{
+  "functionName": "net-diagnose",
+  "runtime": "Nodejs18.15",
+  "handler": "index.mainHandler",
+  "timeout": 30,
+  "memorySize": 256,
+  "envVariables": {
+    "PROBE_17CE_TOKEN": ""
+  },
+  "triggers": [
+    {
+      "name": "net-diagnose-http-trigger",
+      "type": "http",
+      "config": {
+        "auth": false,
+        "methods": ["POST"]
+      }
+    }
+  ]
+}

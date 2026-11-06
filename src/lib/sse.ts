@@ -40,6 +40,50 @@ export interface SseRequestHandle {
   abort: () => void
 }
 
+/**
+ * 小程序端 SSE 请求超时（5 分钟）。
+ *
+ * 【为什么必须显式设置】Taro.request 默认 timeout 是 60s。大模型「首字延迟 + 长回复」
+ * 很容易超过 60s，超时后微信回 `request:fail timeout`，用户看到「请求失败」，而实际上
+ * 上游仍在正常生成——服务端日志会同时出现 `stream failed: The stream controller cannot
+ * close or enqueue`（客户端已断开、服务端还在往已关闭的流写）。
+ * 放到 5 分钟，让「慢」不再被误判成「失败」；真正的死连接仍由这个上限兜底。
+ */
+export const SSE_TIMEOUT_MS = 5 * 60 * 1000
+
+/**
+ * 判断一个错误是否是「请求被主动中断」。
+ *
+ * 【为什么需要】微信底层在请求被中断时回的是 `{ errMsg: 'request:fail interrupted' }`，
+ * 它**不是 Error 实例**、没有 `name`，所以 `err?.name === 'AbortError'` 这类判断抓不到它。
+ * 中断是预期行为（用户点停止 / 切页 / 连续发送），不该冒成「请求失败」的 toast。
+ *
+ * 覆盖三种中断文案：微信 `request:fail interrupted`、H5 `AbortError`、
+ * 以及部分基础库的 `request:fail abort`。
+ */
+export function isAbortError(err: unknown): boolean {
+  if (!err) return false
+  const e = err as { name?: string; message?: string; errMsg?: string }
+  if (e.name === 'AbortError') return true
+  const text = `${e.errMsg ?? ''} ${e.message ?? ''}`.toLowerCase()
+  return text.includes('interrupted') || text.includes('abort')
+}
+
+/**
+ * 判断一个错误是否是「请求超时」。
+ *
+ * 【为什么和中断分开】微信回 `{ errMsg: 'request:fail timeout' }`。它和主动中断的
+ * 处理方式不同：中断是用户意图（静默），超时是**网络/上游慢**（要提示，但已收内容
+ * 必须保留，不能整条丢掉）。两者都不是 Error 实例，只能按 errMsg 文案识别。
+ */
+export function isTimeoutError(err: unknown): boolean {
+  if (!err) return false
+  const e = err as { name?: string; message?: string; errMsg?: string }
+  if (e.name === 'TimeoutError') return true
+  const text = `${e.errMsg ?? ''} ${e.message ?? ''}`.toLowerCase()
+  return text.includes('timeout') || text.includes('timed out')
+}
+
 /** 增量 UTF-8 解码器（跨端） */
 export interface StreamDecoder {
   decode(chunk: ArrayBuffer | Uint8Array): string
@@ -279,7 +323,7 @@ export function sseRequest(options: SseRequestOptions): SseRequestHandle {
         parser.flush((ev) => onMessage?.(ev))
         onDone?.()
       } catch (err: any) {
-        if (aborted || err?.name === 'AbortError') return
+        if (aborted || isAbortError(err)) return
         onError?.(err)
       }
     })()
@@ -293,6 +337,12 @@ export function sseRequest(options: SseRequestOptions): SseRequestHandle {
   }
 
   // 小程序：Taro.request + enableChunked
+  //
+  // ⚠️ 必须显式给一个足够长的 timeout：Taro 默认 60s，而大模型首字延迟 + 长回复
+  //    很容易超过 60s，超时后微信回 `request:fail timeout`，用户看到「请求失败」而
+  //    实际上上游还在正常生成（服务端日志会同时出现 `stream failed: The stream
+  //    controller cannot close or enqueue`——客户端已断开、服务端还在写）。
+  //    这里放到 5 分钟，让「慢」不再被误判成「失败」。
   const task = Taro.request({
     url,
     method,
@@ -300,6 +350,7 @@ export function sseRequest(options: SseRequestOptions): SseRequestHandle {
     data: prepared.body as any,
     enableChunked: true,
     responseType: 'text',
+    timeout: SSE_TIMEOUT_MS,
     success: (res) => {
       const tail = decoder.flush()
       if (tail) dispatch(tail)
@@ -311,7 +362,16 @@ export function sseRequest(options: SseRequestOptions): SseRequestHandle {
       onDone?.()
     },
     fail: (err) => {
-      if (aborted) return
+      // 主动中断（用户点停止 / 切页 / 连续发送）是预期行为，静默吞掉。
+      // ⚠️ 微信回的是 `{ errMsg: 'request:fail interrupted' }`，不是 Error 实例、
+      //    没有 name，只判 `aborted` 会漏掉「请求被底层中断但 aborted 尚未置位」的竞态。
+      if (aborted || isAbortError(err)) return
+      // 超时：已收到的内容必须保留（上层据此决定「保留气泡 + 提示」而不是整条丢弃）。
+      // 用带标记的 Error 透传，让 api 层能区分「超时」与「真失败」。
+      if (isTimeoutError(err)) {
+        onError?.(new Error('__TIMEOUT__'))
+        return
+      }
       onError?.(err)
     },
   })

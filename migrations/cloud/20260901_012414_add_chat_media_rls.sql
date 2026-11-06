@@ -1,0 +1,12 @@
+-- ============================================
+-- 云端兼容版（方案 A：storage.objects 在云端是固定逻辑桶 runtime，无 DDL）
+-- 生成自：migrations/20260901_012414_add_chat_media_rls.sql
+-- ============================================
+--
+-- 原 Supabase 专属：
+--   CREATE POLICY anon_select_chat_media ON storage.objects FOR SELECT USING (bucket_id = 'chat-media');
+--   CREATE POLICY users_insert_chat_media ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'chat-media' AND auth.role() = 'authenticated');
+--
+-- 云端等价：media 文件路径前缀改为 `shared/<uid>/chat-media/...`，
+-- 公开访问通过 cloud.storage.createSignedUrl 替代；登录态由 cloud.auth 自动注入。
+-- 此文件在云端无 DDL，仅作存档占位。

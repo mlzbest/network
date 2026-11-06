@@ -1,0 +1,16 @@
+-- 定位历史增加「地名 / 地址」两列
+--
+-- 【为什么必须落库而不是每次渲染时现查】
+-- 逆地理编码是第三方接口（腾讯地图 WebService），有配额与延迟。轨迹页一次要展示
+-- 几十个地点，若每次打开都逐个现查，既慢又容易触发配额限制；而一个坐标对应的地名
+-- 几乎不会变，写一次就能长期复用。
+--
+-- 【为什么允许为空】
+-- 逆地理可能失败（未配置 Key、配额用尽、网络抖动），此时坐标本身仍然有效。
+-- 地名是「锦上添花」的展示信息，不能因为解析失败就丢掉这条定位记录。
+ALTER TABLE public.user_location_history
+  ADD COLUMN IF NOT EXISTS name TEXT,
+  ADD COLUMN IF NOT EXISTS address TEXT;
+
+COMMENT ON COLUMN public.user_location_history.name IS '逆地理解析出的地点名（如「望京SOHO」），解析失败为 NULL';
+COMMENT ON COLUMN public.user_location_history.address IS '逆地理解析出的完整地址，解析失败为 NULL';

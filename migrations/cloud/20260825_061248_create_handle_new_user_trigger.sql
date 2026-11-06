@@ -1,0 +1,11 @@
+-- ============================================
+-- 云端兼容版（方案 A：handle_new_user 触发器在云端改为「前端登录函数」负责）
+-- 生成自：migrations/20260825_061248_create_handle_new_user_trigger.sql
+-- ============================================
+--
+-- 原 Supabase 专属：CREATE TRIGGER ... ON auth.users ... EXECUTE FUNCTION handle_new_user()
+-- 云端 auth.users 表结构与 raw_user_meta_data 字段是否暴露均未公开，无法假设。
+--
+-- 云端等价：由「登录函数」在 cloud.auth.signInWithWechat 成功后，
+-- 手动 upsert profiles 行（openid = session.user.id）。
+-- 此文件在云端无 DDL，仅作存档占位。

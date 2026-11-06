@@ -7,10 +7,14 @@
 *.bak
 *.orig
 
-# 环境变量与密钥
+# 环境变量与密钥（只提交 .env.example / .env.miniprogram.example 模板）
 .env
+.env.miniprogram
+.env.production
 .env.local
 .env.*.local
+.meoo-preview-env-*
+functions-cloud/providers/*/tcb.local.json
 *.pem
 *.key
 
@@ -26,7 +30,11 @@ Thumbs.db
 node_modules/
 *.tsbuildinfo
 dist/
+dist-web/
+.swc/
 build/
+.workbuddy/
+*.genie
 .next/
 .nuxt/
 .cache/
@@ -125,28 +133,3 @@ tmp/
 .oneday/
 
 .microcompact/
-dist/
-dist-alipay/
-dist-baidu/
-dist-web/
-.meoo/
-.meoo-cloud-snapshot.json
-.meoo-manifest.json
-.meoo-template-version.json
-.stats/
-.config/
-.accesslog/
-postgres-data/
-.swc/
-function/
-functions/*/
-!functions/*/index.ts
-!functions/**/*.ts
-!functions/**/*.json
-!functions/**/*.eszip
-!functions/**/*.mjs
-supabase-config/
-supabase/
-types/
-project.config.json
-.env.miniprogram

@@ -1,0 +1,26 @@
+{
+  "functionName": "smtp-recovery",
+  "runtime": "Nodejs18.15",
+  "handler": "index.mainHandler",
+  "timeout": 30,
+  "memorySize": 256,
+  "envVariables": {
+    "WX_CLOUD_ENDPOINT": "",
+    "WX_CLOUD_PUBLISHABLE_KEY": "",
+    "RECOVERY_SMTP_HOST": "",
+    "RECOVERY_SMTP_PORT": "587",
+    "RECOVERY_SMTP_USER": "",
+    "RECOVERY_SMTP_PASS": "",
+    "RECOVERY_MAIL_FROM": ""
+  },
+  "triggers": [
+    {
+      "name": "smtp-recovery-http-trigger",
+      "type": "http",
+      "config": {
+        "auth": false,
+        "methods": ["POST"]
+      }
+    }
+  ]
+}

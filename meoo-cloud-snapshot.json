@@ -1,12 +1,22 @@
 {
   "version": 1,
-  "collectedAt": "2026-09-16T07:47:32.924Z",
+  "collectedAt": "2026-10-26T01:32:32.489Z",
   "hasDatabase": true,
   "edgeFunctions": [
     {
-      "slug": "ping-host",
-      "name": "ping-host",
+      "slug": "net-diagnose",
+      "name": "net-diagnose",
+      "verifyJwt": false
+    },
+    {
+      "slug": "ai-chat",
+      "name": "ai-chat",
       "verifyJwt": true
+    },
+    {
+      "slug": "set-account-email",
+      "name": "set-account-email",
+      "verifyJwt": false
     }
   ],
   "secretNames": [
@@ -15,7 +25,19 @@
     "SUPABASE_DB_URL",
     "SUPABASE_URL",
     "SUPABASE_PUBLIC_URL",
-    "MEOO_PROJECT_API_KEY"
+    "MEOO_PROJECT_API_KEY",
+    "PROBE_17CE_TOKEN",
+    "AGNES_API_KEY",
+    "RECOVERY_SMTP_HOST",
+    "RECOVERY_SMTP_PORT",
+    "RECOVERY_SMTP_USER",
+    "RECOVERY_SMTP_PASS",
+    "RECOVERY_MAIL_FROM",
+    "WX_APP_ID",
+    "WX_APP_SECRET",
+    "BAIDU_API_KEY",
+    "BAIDU_SECRET_KEY",
+    "AMAP_WEB_KEY"
   ],
   "storageBuckets": [
     {

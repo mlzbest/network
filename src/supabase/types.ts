@@ -14,6 +14,40 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      conversation_deletes: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_deletes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_deletes_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -54,6 +88,31 @@ export type Database = {
           },
         ]
       }
+      login_events: {
+        Row: {
+          id: string
+          logged_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          logged_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          logged_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "login_events_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_deletes: {
         Row: {
           created_at: string
@@ -88,15 +147,53 @@ export type Database = {
           },
         ]
       }
+      message_visibility: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_visibility_message_id_fkey"
+            columns: ["message_id"]
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_visibility_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
           content_type: string
           conversation_id: string
           created_at: string
+          delivered_at: string | null
           id: string
           media_url: string | null
           read_at: string | null
+          reply_to_content: string | null
+          reply_to_id: string | null
+          revoked_at: string | null
           sender_id: string
         }
         Insert: {
@@ -104,9 +201,13 @@ export type Database = {
           content_type?: string
           conversation_id: string
           created_at?: string
+          delivered_at?: string | null
           id?: string
           media_url?: string | null
           read_at?: string | null
+          reply_to_content?: string | null
+          reply_to_id?: string | null
+          revoked_at?: string | null
           sender_id: string
         }
         Update: {
@@ -114,9 +215,13 @@ export type Database = {
           content_type?: string
           conversation_id?: string
           created_at?: string
+          delivered_at?: string | null
           id?: string
           media_url?: string | null
           read_at?: string | null
+          reply_to_content?: string | null
+          reply_to_id?: string | null
+          revoked_at?: string | null
           sender_id?: string
         }
         Relationships: [
@@ -138,29 +243,132 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email: string | null
+          hide_presence: boolean
           id: string
+          last_active_at: string | null
+          last_lat: number | null
+          last_lng: number | null
+          last_location_at: string | null
+          last_login_at: string | null
+          last_logout_at: string | null
+          last_seen_boundary_at: string | null
           nickname: string | null
           openid: string | null
+          presence_at: string | null
+          presence_state: string | null
+          recovery_sent_at: string | null
+          recovery_token_hash: string | null
           unionid: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
+          hide_presence?: boolean
           id: string
+          last_active_at?: string | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_location_at?: string | null
+          last_login_at?: string | null
+          last_logout_at?: string | null
+          last_seen_boundary_at?: string | null
           nickname?: string | null
           openid?: string | null
+          presence_at?: string | null
+          presence_state?: string | null
+          recovery_sent_at?: string | null
+          recovery_token_hash?: string | null
           unionid?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
+          hide_presence?: boolean
           id?: string
+          last_active_at?: string | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_location_at?: string | null
+          last_login_at?: string | null
+          last_logout_at?: string | null
+          last_seen_boundary_at?: string | null
           nickname?: string | null
           openid?: string | null
+          presence_at?: string | null
+          presence_state?: string | null
+          recovery_sent_at?: string | null
+          recovery_token_hash?: string | null
           unionid?: string | null
           username?: string | null
+        }
+        Relationships: []
+      }
+      user_location_history: {
+        Row: {
+          address: string | null
+          id: string
+          lat: number
+          lng: number
+          name: string | null
+          recorded_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          id?: string
+          lat: number
+          lng: number
+          name?: string | null
+          recorded_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string | null
+          recorded_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_location_history_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_we_run_steps: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          steps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          steps?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          steps?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -169,7 +377,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_conversation_summaries: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          conversation_id: string
+          visible_count: number
+          unread_count: number
+          last_visible_revoked: boolean
+          last_visible_content: string
+          last_visible_content_type: string
+          last_visible_media_url: string
+        }[]
+      }
+      purge_conversation_if_both_deleted: {
+        Args: { _conversation_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,0 +1,9 @@
+-- ============================================
+-- 云端兼容版（方案 A：storage.buckets 在云端是固定逻辑桶 runtime，无 DDL）
+-- 生成自：migrations/20260901_012408_create_chat_media_bucket.sql
+-- ============================================
+--
+-- 原 Supabase 专属：INSERT INTO storage.buckets (id, name, public) VALUES ('chat-media', 'chat-media', true);
+-- 云端等价：media 文件路径前缀改为 `shared/<uid>/chat-media/...` 或 `users/<uid>/...`，
+-- 公开访问通过 cloud.storage.createSignedUrl 替代（见 src/api/upload.ts 改造）。
+-- 此文件在云端无 DDL，仅作存档占位。

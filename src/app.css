@@ -18,6 +18,21 @@ page {
   }
 }
 
+/* 消息「发送中」转圈图标。小程序不支持 SVG 的 animateTransform，
+   只能靠 CSS 旋转；@keyframes 无法写进 inline style，故放全局样式。 */
+@keyframes msg-sending-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.msg-sending-spin {
+  animation: msg-sending-spin 1s linear infinite;
+}
+
 /* 通用语义色 token，可通过 Tailwind 工具类（bg-primary / text-foreground 等）使用 */
 :root,
 page {

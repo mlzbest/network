@@ -1,0 +1,20 @@
+{
+  "functionName": "reverse-geocode",
+  "runtime": "Nodejs18.15",
+  "handler": "index.mainHandler",
+  "timeout": 15,
+  "memorySize": 128,
+  "envVariables": {
+    "AMAP_WEB_KEY": ""
+  },
+  "triggers": [
+    {
+      "name": "reverse-geocode-http-trigger",
+      "type": "http",
+      "config": {
+        "auth": false,
+        "methods": ["POST"]
+      }
+    }
+  ]
+}

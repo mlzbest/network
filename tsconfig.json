@@ -23,6 +23,10 @@
     "typeRoots": [
       "node_modules/@types"
     ],
+    "types": [
+      "node",
+      "react"
+    ],
     "paths": {
       "@/*": ["./src/*"]
     }

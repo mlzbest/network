@@ -1,8 +1,8 @@
 {
-  "name": "network-app",
-  "version": "1.0.123",
+  "name": "network-view",
+  "version": "75",
   "private": true,
-  "description": "Multi-platform Network Diagnostic & Chat Application",
+  "description": "Meoo Mini Program Application",
   "meoo": {
     "api-url": "https://mp-api.meoo.host",
     "app-id": "p13z02n1pgq4"
@@ -11,8 +11,6 @@
     "build": "pnpm build:weapp",
     "build:weapp": "taro build --type weapp",
     "build:web": "taro build --type h5",
-    "build:alipay": "taro build --type alipay",
-    "build:baidu": "taro build --type swan",
     "dev": "pnpm dev:web",
     "dev:weapp": "taro build --type weapp --watch",
     "dev:web": "taro build --type h5 --watch",
@@ -21,10 +19,7 @@
     "new": "taro new",
     "preview:weapp": "taro build --type weapp --preview",
     "//validate": "项目唯一校验入口：并发跑 eslint(零警告) + tsc(类型检查)。查看输出务必完整读取，禁止用 head/tail 截断——错误可能出现在任意位置，截断会漏报。",
-    "validate": "pnpm exec concurrently --kill-others-on-fail --kill-signal SIGKILL -n lint,tsc -c red,blue \"eslint 'src/**/*.{js,jsx,ts,tsx,css}' --max-warnings=0 --quiet\" \"tsc --noEmit --skipLibCheck\"",
-    "version:bump": "node scripts/bump-version.js",
-    "upload": "node scripts/upload.js",
-    "deploy": "node scripts/deploy.js"
+    "validate": "pnpm exec concurrently --kill-others-on-fail --kill-signal SIGKILL -n lint,tsc -c red,blue \"eslint 'src/**/*.{js,jsx,ts,tsx,css}' --max-warnings=0 --quiet\" \"tsc --noEmit --skipLibCheck\""
   },
   "lint-staged": {
     "src/**/*.{js,jsx,ts,tsx,css}": [
@@ -42,14 +37,13 @@
     "@tarojs/components": "4.2.0",
     "@tarojs/helper": "4.2.0",
     "@tarojs/plugin-framework-react": "4.2.0",
-    "@tarojs/plugin-platform-alipay": "4.2.0",
     "@tarojs/plugin-platform-h5": "4.2.0",
-    "@tarojs/plugin-platform-swan": "4.2.0",
     "@tarojs/plugin-platform-weapp": "4.2.0",
     "@tarojs/react": "4.2.0",
     "@tarojs/runtime": "4.2.0",
     "@tarojs/shared": "4.2.0",
     "@tarojs/taro": "4.2.0",
+    "@tencent-ai/workbuddy-cloud-sdk": "0.1.4-dev.ca27990.202610161713",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -63,7 +57,6 @@
   "devDependencies": {
     "@babel/core": "^7.24.4",
     "@babel/parser": "^7.29.3",
-    "@babel/plugin-proposal-decorators": "^7.28.0",
     "@babel/plugin-transform-class-properties": "7.25.9",
     "@babel/preset-react": "^7.24.1",
     "@babel/traverse": "^7.29.0",
@@ -90,8 +83,7 @@
     "eslint-plugin-tailwindcss": "^3.18.2",
     "less": "^4.2.0",
     "lint-staged": "^16.1.2",
-    "magic-string": "0.30.21",
-    "miniprogram-ci": "^2.1.31",
+    "magic-string": "^0.30.21",
     "only-allow": "^1.2.2",
     "postcss": "^8.5.6",
     "react-refresh": "^0.14.0",

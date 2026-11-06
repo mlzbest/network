@@ -1,0 +1,7 @@
+{
+  "name": "asr",
+  "version": "1.0.0",
+  "description": "ASR provider cloud function (TCB)",
+  "main": "index.js",
+  "engines": { "node": ">=18" }
+}

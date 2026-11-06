@@ -1,4 +1,9 @@
 /**
+ * ⚠️ DEPRECATED（Task #5）：本函数已被 WorkBuddy Cloud 的 `cloudAuth.signInWithWechat` 替代。
+ * 前端 `src/supabase/wx-mp-login.ts` 已切到 SDK 直连微信登录，本函数不再被调用。
+ * 保留代码仅作为「外部承载回滚」参考；正式切换外部承载后可删除整个目录。
+ * 详见 `functions-cloud/wx-mp-login.retired.md`。
+ *
  * 微信小程序登录 Edge Function
  *
  * 流程：
@@ -14,7 +19,7 @@
  * - WX_APP_ID       微信小程序 AppID
  * - WX_APP_SECRET   微信小程序 AppSecret
  *
- * 部署：edge-runtime deploy --name wx-mp-login --no-jwt
+ * 部署：meoo-cli cloud deploy-function -n wx-mp-login -j false
  *      （-j false 是必须的，登录前用户没有 token）
  */
 
@@ -103,7 +108,7 @@ Deno.serve(async (req) => {
     }
     const { openid, unionid } = wxData;
 
-    // 2) 用 openid 派生虚拟邮箱（统一虚拟邮箱域名模式）
+    // 2) 用 openid 派生虚拟邮箱（与 meoo 用户名登录的 *@meoo.local 模式一致）
     const email = `${openid}@wx.local`;
 
     const supabaseAdmin = createClient(

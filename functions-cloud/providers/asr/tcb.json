@@ -1,0 +1,26 @@
+{
+  "functionName": "asr",
+  "runtime": "Nodejs18.15",
+  "handler": "index.mainHandler",
+  "timeout": 45,
+  "memorySize": 256,
+  "envVariables": {
+    "WX_CLOUD_ENDPOINT": "",
+    "WX_CLOUD_PUBLISHABLE_KEY": "",
+    "BAIDU_API_KEY": "",
+    "BAIDU_SECRET_KEY": "",
+    "ASR_BASE_URL": "https://apihub.agnes-ai.com/v1",
+    "ASR_API_KEY": "",
+    "ASR_MODEL": "agnes-2.5-flash"
+  },
+  "triggers": [
+    {
+      "name": "asr-http-trigger",
+      "type": "http",
+      "config": {
+        "auth": false,
+        "methods": ["POST"]
+      }
+    }
+  ]
+}

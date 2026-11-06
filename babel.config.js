@@ -8,8 +8,5 @@ module.exports = {
       compiler: 'vite',
       useBuiltIns: false
     }]
-  ],
-  plugins: [
-    ['@babel/plugin-proposal-decorators', { version: 'legacy' }]
   ]
 }

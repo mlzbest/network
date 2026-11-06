@@ -1,0 +1,19 @@
+name = "ai-relay"
+# 你本机跑 wrangler deploy 时：wrangler 自动用 esbuild 打包 .ts，无需手动转 JS。
+# 本机 npx/npm 装包卡的网络问题不影响你本地正常机器的部署。
+main = "index.ts"
+compatibility_date = "2026-01-01"
+
+# 承载层 gateway 由 Cloudflare 提供，CORS 头在 fetch 内显式声明，无需单独配置
+# RELAY_WHITELIST 通过 `wrangler secret put RELAY_WHITELIST` 注入（JSON 数组字符串）
+# 未注入时回落到代码内置默认白名单（DEFAULT_WHITELIST）
+
+[vars]
+# 可选：在此写死 RELAY_WHITELIST（JSON 字符串），或用 secret 注入
+# RELAY_WHITELIST = '["deepseek.com","moonshot.ai","openai.com"]'
+
+# ── 部署鉴权（不进 git，走 .env.cloudflare.local 或 export）──
+# wrangler 自动读取以下任一来源（优先级：环境变量 > .env.cloudflare.local > .dev.vars）：
+#   - CLOUDFLARE_API_TOKEN（在 .env.cloudflare.local 或 shell export 提供）
+#   - CLOUDFLARE_ACCOUNT_ID（同上）
+# 部署后控制台会打印 Worker 公网 URL，回填到前端 .env 的 VITE_CLOUD_FN_RELAY_URL。

@@ -23,15 +23,9 @@ importers:
       '@tarojs/plugin-framework-react':
         specifier: 4.2.0
         version: 4.2.0(@tarojs/helper@4.2.0)(@tarojs/runtime@4.2.0)(@tarojs/shared@4.2.0)(@vitejs/plugin-react@4.7.0(vite@4.5.14(@types/node@22.19.6)(less@4.5.1)(lightningcss@1.31.1)(sass@1.97.2)(terser@5.44.1)))(react@18.3.1)(vite@4.5.14(@types/node@22.19.6)(less@4.5.1)(lightningcss@1.31.1)(sass@1.97.2)(terser@5.44.1))(webpack@5.97.1(@swc/core@1.3.96))
-      '@tarojs/plugin-platform-alipay':
-        specifier: 4.2.0
-        version: 4.2.0(@tarojs/service@4.2.0)(@tarojs/shared@4.2.0)
       '@tarojs/plugin-platform-h5':
         specifier: 4.2.0
         version: 4.2.0(@tarojs/taro@4.2.0(@tarojs/components@4.2.0(@tarojs/helper@4.2.0)(@types/react@18.3.27)(postcss@8.5.6)(rollup@3.29.5)(webpack@5.97.1(@swc/core@1.3.96)))(@tarojs/helper@4.2.0)(@tarojs/shared@4.2.0)(@types/react@18.3.27)(postcss@8.5.6)(rollup@3.29.5)(webpack@5.97.1(@swc/core@1.3.96)))(@types/react@18.3.27)(postcss@8.5.6)(react@18.3.1)(rollup@3.29.5)(solid-js@1.9.10)(webpack@5.97.1(@swc/core@1.3.96))
-      '@tarojs/plugin-platform-swan':
-        specifier: 4.2.0
-        version: 4.2.0(@tarojs/service@4.2.0)(@tarojs/shared@4.2.0)
       '@tarojs/plugin-platform-weapp':
         specifier: 4.2.0
         version: 4.2.0(@tarojs/service@4.2.0)(@tarojs/shared@4.2.0)
@@ -47,6 +41,9 @@ importers:
       '@tarojs/taro':
         specifier: 4.2.0
         version: 4.2.0(@tarojs/components@4.2.0(@tarojs/helper@4.2.0)(@types/react@18.3.27)(postcss@8.5.6)(rollup@3.29.5)(webpack@5.97.1(@swc/core@1.3.96)))(@tarojs/helper@4.2.0)(@tarojs/shared@4.2.0)(@types/react@18.3.27)(postcss@8.5.6)(rollup@3.29.5)(webpack@5.97.1(@swc/core@1.3.96))
+      '@tencent-ai/workbuddy-cloud-sdk':
+        specifier: 0.1.4-dev.ca27990.202610161713
+        version: 0.1.4-dev.ca27990.202610161713
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -81,9 +78,6 @@ importers:
       '@babel/parser':
         specifier: ^7.29.3
         version: 7.29.3
-      '@babel/plugin-proposal-decorators':
-        specifier: ^7.28.0
-        version: 7.28.0(@babel/core@7.28.5)
       '@babel/plugin-transform-class-properties':
         specifier: 7.25.9
         version: 7.25.9(@babel/core@7.28.5)
@@ -119,7 +113,7 @@ importers:
         version: 4.2.0(@types/node@22.19.6)
       '@tarojs/plugin-mini-ci':
         specifier: ^4.2.0
-        version: 4.2.0(miniprogram-ci@2.1.31(eslint@8.57.1))(tt-ide-cli@0.1.31(@types/node@22.19.6))
+        version: 4.2.0(miniprogram-ci@2.1.26(eslint@8.57.1))(tt-ide-cli@0.1.31(@types/node@22.19.6))
       '@tarojs/vite-runner':
         specifier: 4.2.0
         version: 4.2.0(@tarojs/runtime@4.2.0)(@types/babel__core@7.20.5)(jiti@2.6.1)(postcss@8.5.6)(rollup@3.29.5)(terser@5.44.1)(typescript@5.9.3)(vite@4.5.14(@types/node@22.19.6)(less@4.5.1)(lightningcss@1.31.1)(sass@1.97.2)(terser@5.44.1))
@@ -163,11 +157,8 @@ importers:
         specifier: ^16.1.2
         version: 16.2.7
       magic-string:
-        specifier: 0.30.21
+        specifier: ^0.30.21
         version: 0.30.21
-      miniprogram-ci:
-        specifier: ^2.1.31
-        version: 2.1.31(eslint@8.57.1)
       only-allow:
         specifier: ^1.2.2
         version: 1.2.2
@@ -4220,22 +4211,8 @@ packages:
       tt-ide-cli:
         optional: true
 
-  '@tarojs/plugin-platform-alipay@4.2.0':
-    resolution: {integrity: sha512-T0m86RqWgLmGO/pEMWPEBas4VHlmgFIgeW2OKFWakYtBzNfAmjqblQCFvWyrIlsVEz8+rIy/THT4chHG8OOm6A==}
-    engines: {node: '>= 18'}
-    peerDependencies:
-      '@tarojs/service': 4.2.0
-      '@tarojs/shared': 4.2.0
-
   '@tarojs/plugin-platform-h5@4.2.0':
     resolution: {integrity: sha512-HoyGHYaBrxJtaIRT1Y81LK7re0pLfF9DOGQ77bNmQwtuJS9JpiFMI47Q27+2anldwJodQdQP9d3KSPRqGnRLCw==}
-
-  '@tarojs/plugin-platform-swan@4.2.0':
-    resolution: {integrity: sha512-GHF6r8mVsS7YYxxCyAI2+SRbX30ffrXgrSLRLlv/uzs3Chp9pjVzQBo9uqWinIL4S05MkO6aoQsDdlUa0MmKCw==}
-    engines: {node: '>= 18'}
-    peerDependencies:
-      '@tarojs/service': 4.2.0
-      '@tarojs/shared': 4.2.0
 
   '@tarojs/plugin-platform-weapp@4.2.0':
     resolution: {integrity: sha512-0meY33+KYITF9uUav4JdKn2PY1xRnVQBVurPv3wm891pRBqPbfipcUsRjF7B1CeeWYqQK9/jy7gQlnzApmbakA==}
@@ -4316,6 +4293,10 @@ packages:
       '@tarojs/runtime': 4.2.0
       postcss: ^8
       vite: ^4
+
+  '@tencent-ai/workbuddy-cloud-sdk@0.1.4-dev.ca27990.202610161713':
+    resolution: {integrity: sha512-HyrXFiilbYFxDGF5pvl1MhBYvE9QnK39uJjiiefX07k7ppl2UPKfl6KWaN9yIzD1DtAGycl3fXaYOzHmvlIMpg==}
+    engines: {node: '>=18'}
 
   '@tokenizer/inflate@0.2.7':
     resolution: {integrity: sha512-MADQgmZT1eKjp06jpI2yozxaU9uVs4GzzgSL+uEq7bVcJ9V1ZXQkeGNql1fsSI0gMy1vhvNTNbUqrx+pZfJVmg==}
@@ -8187,8 +8168,8 @@ packages:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
 
-  miniprogram-ci@2.1.31:
-    resolution: {integrity: sha512-SREx6UnJC74aQ2a1YMNShqQOB97nHO+ll6ZQrCQp98NHXcRq848VjZoD5ELpd95z+8uTASQUAcFtl/HrXuM7Nw==}
+  miniprogram-ci@2.1.26:
+    resolution: {integrity: sha512-a83cOIRfwda7+HwEdG1LpqYAPfGGuGEGfJKRQ/9Yq29NCwmHX1oJSdLlAknqSAwsax2SxayaBQSkfbIbRRlY2w==}
     engines: {node: '>=16.1.0'}
     hasBin: true
 
@@ -15784,13 +15765,13 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  '@tarojs/plugin-mini-ci@4.2.0(miniprogram-ci@2.1.31(eslint@8.57.1))(tt-ide-cli@0.1.31(@types/node@22.19.6))':
+  '@tarojs/plugin-mini-ci@4.2.0(miniprogram-ci@2.1.26(eslint@8.57.1))(tt-ide-cli@0.1.31(@types/node@22.19.6))':
     dependencies:
       axios: 1.13.2
       jimp: 0.22.12
       jsqr: 1.4.0
       minimist: 1.2.8
-      miniprogram-ci: 2.1.31(eslint@8.57.1)
+      miniprogram-ci: 2.1.26(eslint@8.57.1)
       qrcode: 1.5.4
       resolve: 1.22.11
       shelljs: 0.8.5
@@ -15799,11 +15780,6 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - encoding
-
-  '@tarojs/plugin-platform-alipay@4.2.0(@tarojs/service@4.2.0)(@tarojs/shared@4.2.0)':
-    dependencies:
-      '@tarojs/service': 4.2.0
-      '@tarojs/shared': 4.2.0
 
   '@tarojs/plugin-platform-h5@4.2.0(@tarojs/taro@4.2.0(@tarojs/components@4.2.0(@tarojs/helper@4.2.0)(@types/react@18.3.27)(postcss@8.5.6)(rollup@3.29.5)(webpack@5.97.1(@swc/core@1.3.96)))(@tarojs/helper@4.2.0)(@tarojs/shared@4.2.0)(@types/react@18.3.27)(postcss@8.5.6)(rollup@3.29.5)(webpack@5.97.1(@swc/core@1.3.96)))(@types/react@18.3.27)(postcss@8.5.6)(react@18.3.1)(rollup@3.29.5)(solid-js@1.9.10)(webpack@5.97.1(@swc/core@1.3.96))':
     dependencies:
@@ -15833,11 +15809,6 @@ snapshots:
       - webpack
       - webpack-chain
       - webpack-dev-server
-
-  '@tarojs/plugin-platform-swan@4.2.0(@tarojs/service@4.2.0)(@tarojs/shared@4.2.0)':
-    dependencies:
-      '@tarojs/service': 4.2.0
-      '@tarojs/shared': 4.2.0
 
   '@tarojs/plugin-platform-weapp@4.2.0(@tarojs/service@4.2.0)(@tarojs/shared@4.2.0)':
     dependencies:
@@ -15975,6 +15946,8 @@ snapshots:
       - terser
       - tsx
       - typescript
+
+  '@tencent-ai/workbuddy-cloud-sdk@0.1.4-dev.ca27990.202610161713': {}
 
   '@tokenizer/inflate@0.2.7':
     dependencies:
@@ -20731,7 +20704,7 @@ snapshots:
 
   minipass@7.1.2: {}
 
-  miniprogram-ci@2.1.31(eslint@8.57.1):
+  miniprogram-ci@2.1.26(eslint@8.57.1):
     dependencies:
       '@babel/code-frame': 7.22.10
       '@babel/compat-data': 7.22.9
