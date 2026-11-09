@@ -33,6 +33,7 @@ import {
   getCloudSessionToken,
   getWorkBuddyCloudClient,
 } from './cloud-adapter';
+import { selfhostClient } from './selfhost-client';
 
 declare global {
   interface ImportMetaEnv {
@@ -48,8 +49,11 @@ declare global {
      * 鉴权后端选择：
      *  - `legacy`（默认）：Meoo Cloud Supabase 网关，支持「用户名 + 密码」注册/登录
      *  - `cloud`：WorkBuddy Cloud SDK，注册需 OTP 验证码
+     *  - `selfhost`：自建 Node + Postgres 后端（backend/ 目录），彻底脱离 Meoo Cloud
      */
-    readonly VITE_AUTH_BACKEND?: 'legacy' | 'cloud';
+    readonly VITE_AUTH_BACKEND?: 'legacy' | 'cloud' | 'selfhost';
+    /** selfhost 模式下后端 API 根地址（如 http://localhost:4000 或生产域名） */
+    readonly VITE_SELFHOST_API_BASE?: string;
     /**
      * Task #8/#9：承载层网关 URL（TCB / Cloudflare Workers 部署后填入）。
      * 配置后 5 类外部依赖能力（ASR / SMTP 找回密码 / 网络诊断 / 逆地理 / relay）
@@ -73,29 +77,32 @@ function requirePublicEnv(value: string | undefined, name: string): string {
 }
 
 /** 当前鉴权后端。`cloud` 需显式开启，避免误切后注册链路整体失效。 */
-export const AUTH_BACKEND: 'legacy' | 'cloud' =
-  import.meta.env.VITE_AUTH_BACKEND === 'cloud' ? 'cloud' : 'legacy';
+export const AUTH_BACKEND: 'legacy' | 'cloud' | 'selfhost' =
+  (import.meta.env.VITE_AUTH_BACKEND as any) === 'cloud'
+    ? 'cloud'
+    : (import.meta.env.VITE_AUTH_BACKEND as any) === 'selfhost'
+      ? 'selfhost'
+      : 'legacy';
 
 export const isCloudAuth = AUTH_BACKEND === 'cloud';
+export const isSelfhost = AUTH_BACKEND === 'selfhost';
 
 // ─── 兼容导出：旧业务文件仍 import 这些，保持签名不变 ───────────────────────
 // ⚠️ 这里必须取旧的 VITE_SUPABASE_URL / ANON_KEY，不能回退到 VITE_CLOUD_ENDPOINT：
 // `supabaseUrl` 同时是承载层未配置时 `/functions/v1/*` 的回落基础，指向
 // WorkBuddy Cloud 域名会让 ASR / 找回密码等能力打到不存在的路径上。
-export const projectUrlId = requirePublicEnv(
-  import.meta.env.VITE_ONEDAY_APP_ID,
-  'VITE_ONEDAY_APP_ID',
-);
+// selfhost 模式下这些 legacy 变量无需存在（整条链路走自建后端），给占位空串。
+export const projectUrlId = isSelfhost
+  ? ''
+  : requirePublicEnv(import.meta.env.VITE_ONEDAY_APP_ID, 'VITE_ONEDAY_APP_ID');
 
-export const supabaseUrl = requirePublicEnv(
-  import.meta.env.VITE_SUPABASE_URL,
-  'VITE_SUPABASE_URL',
-);
+export const supabaseUrl = isSelfhost
+  ? (import.meta.env.VITE_SELFHOST_API_BASE ?? '')
+  : requirePublicEnv(import.meta.env.VITE_SUPABASE_URL, 'VITE_SUPABASE_URL');
 
-export const supabaseAnonKey = requirePublicEnv(
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
-  'VITE_SUPABASE_ANON_KEY',
-);
+export const supabaseAnonKey = isSelfhost
+  ? ''
+  : requirePublicEnv(import.meta.env.VITE_SUPABASE_ANON_KEY, 'VITE_SUPABASE_ANON_KEY');
 
 const supabaseAuthStorageKey = import.meta.env.VITE_SUPABASE_AUTH_STORAGE_KEY;
 
@@ -249,10 +256,13 @@ function createLegacyClient(): SupabaseClient<Database> {
 /**
  * 业务统一入口。legacy 下是真 SupabaseClient（含完整 Realtime），
  * cloud 下是 WorkBuddy 兼容对象（cast 成同一类型，避免 15+ 业务文件改类型）。
+ * selfhost 下是自建后端适配器（同样 cast，业务代码零改动）。
  */
-export const supabase: SupabaseClient<Database> = isCloudAuth
-  ? (cloudCompatSupabase as unknown as SupabaseClient<Database>)
-  : createLegacyClient();
+export const supabase: SupabaseClient<Database> = isSelfhost
+  ? (selfhostClient as unknown as SupabaseClient<Database>)
+  : isCloudAuth
+    ? (cloudCompatSupabase as unknown as SupabaseClient<Database>)
+    : createLegacyClient();
 
 // 保留占位变量的引用，避免 TS 判为 unused。
 void supabaseAuthStorageKey;

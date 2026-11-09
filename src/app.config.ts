@@ -18,7 +18,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#fff',
-    navigationBarTitleText: '网络查看',
+    navigationBarTitleText: '检测网络',
     navigationBarTextStyle: 'black'
   },
   // ===== 位置能力声明（聊天「发送位置」功能）=====

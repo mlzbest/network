@@ -231,7 +231,7 @@ export default function PrivacyShield({ children }: { children: ReactNode }) {
             const pages = Taro.getCurrentPages();
             const route = pages[pages.length - 1]?.route || ownRoute || '';
             if (route.includes('ai-chat')) return 'AI 助手';
-            if (route.includes('ping')) return '网络查看';
+            if (route.includes('ping')) return '检测网络';
             return '';
           } catch {
             return '';

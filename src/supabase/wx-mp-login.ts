@@ -1,8 +1,10 @@
 import Taro from '@tarojs/taro';
 import { cloudAuth } from './cloud-adapter';
+import { applySelfhostSession } from './selfhost-client';
 import {
   getWorkBuddyCloudClient,
   isCloudAuth,
+  isSelfhost,
   projectUrlId,
   supabase,
   supabaseAnonKey,
@@ -116,8 +118,48 @@ async function legacyWxLogin(code: string): Promise<WxMpLoginResult> {
 }
 
 /**
+ * selfhost 分支：后端 `/functions/v1/wx-mp-login` 直接签发 JWT 会话（code → openid →
+ * 建号/找号 → session），前端写入本地登录态即可，无 magiclink/verifyOtp 交换环节。
+ */
+async function selfhostWxLogin(code: string): Promise<WxMpLoginResult> {
+  const res = await Taro.request<{
+    session?: { access_token?: string; user?: { id?: string } };
+    user_id?: string;
+    openid?: string;
+    unionid?: string | null;
+    code?: string;
+    error?: string;
+  }>({
+    url: `${supabaseUrl}/functions/v1/wx-mp-login`,
+    method: 'POST',
+    header: { 'Content-Type': 'application/json' },
+    data: { code },
+    timeout: 30000,
+  });
+
+  const body = res.data;
+  const session = body?.session;
+  const token = session?.access_token;
+  if (res.statusCode < 200 || res.statusCode >= 300 || !token) {
+    const msg = body?.error || `服务端返回 ${res.statusCode}`;
+    if (res.statusCode === 503 || body?.code === 'WX_CONFIG_MISSING') {
+      throw new WxMpConfigMissingError(msg);
+    }
+    throw new Error(`微信登录失败: ${msg}`);
+  }
+
+  applySelfhostSession({ access_token: token, user: session?.user });
+  return {
+    userId: session?.user?.id ?? body.user_id ?? null,
+    openid: body.openid ?? '',
+    unionid: body.unionid ?? null,
+  };
+}
+
+/**
  * 微信小程序一键登录。按当前鉴权后端自动分流：
- * 默认 legacy（用户名密码体系所在栈），`VITE_AUTH_BACKEND=cloud` 时走 WorkBuddy SDK。
+ * 默认 legacy（用户名密码体系所在栈），`VITE_AUTH_BACKEND=cloud` 时走 WorkBuddy SDK，
+ * `VITE_AUTH_BACKEND=selfhost` 时走自建后端直签会话。
  */
 export async function wxMpLogin(): Promise<WxMpLoginResult> {
   if (TARO_ENV !== 'weapp') {
@@ -129,5 +171,6 @@ export async function wxMpLogin(): Promise<WxMpLoginResult> {
     throw new Error(`wx.login 失败: ${loginRes.errMsg || '未返回 code'}`);
   }
 
+  if (isSelfhost) return selfhostWxLogin(loginRes.code);
   return isCloudAuth ? cloudWxLogin(loginRes.code) : legacyWxLogin(loginRes.code);
 }

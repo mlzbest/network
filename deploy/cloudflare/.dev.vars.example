@@ -1,0 +1,41 @@
+# 检测网络 · Cloudflare Containers 本地开发/密钥注入模板
+#
+# 用法：cp .dev.vars.example .dev.vars，填好真实值后执行 `npm run secrets`。
+# ⚠️ .dev.vars 含数据库连接串、JWT 密钥、R2 密钥，已加入 .gitignore，绝不提交。
+#    本文件只是键名清单，值一律留空或占位。
+
+# ─── 必填：外部 Postgres（仅用于 provision-hyperdrive / bootstrap-db）────────
+# Workers Free 模式：数据库由 Hyperdrive binding 提供，本项**不会**注入 Worker Secret；
+# 但创建 Hyperdrive 配置与初始化表结构时需要原始连接串。
+# 容器模式：本项会作为 Secret 注入容器 env。
+# 支持 Neon / Supabase / Aiven / 自建 VPS 等任意 Postgres 14+。
+# Supabase 免费层必须用 Session pooler 5432（不要用 6543），追加 ?sslmode=require，
+# 密码中的特殊字符需 URL 编码。
+DATABASE_URL=
+
+# ─── 必填：JWT ─────────────────────────────────────────────────────────────
+# 生成：openssl rand -hex 32
+JWT_SECRET=
+
+# ─── 必填：Cloudflare R2（STORAGE_DRIVER=r2）───────────────────────────────
+# Cloudflare 控制台 → R2 → 管理 R2 API 令牌 → 创建「对象读与写」令牌
+R2_ACCOUNT_ID=
+R2_BUCKET=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+
+# ─── 可选 ──────────────────────────────────────────────────────────────────
+# 桶绑定公开域后可直出永久 URL；留空则图片经后端 /api/storage/public 代理。
+# R2_PUBLIC_URL=
+# R2_ENDPOINT=
+
+# 找回密码邮件（不配则「忘记密码」返回 RESET_CONFIG_MISSING）
+# RECOVERY_SMTP_HOST=
+# RECOVERY_SMTP_PORT=
+# RECOVERY_SMTP_USER=
+# RECOVERY_SMTP_PASS=
+# RECOVERY_MAIL_FROM=
+
+# 微信小程序登录 jscode2session（不配则微信登录返回 WX_CONFIG_MISSING）
+# WX_APP_ID=
+# WX_APP_SECRET=

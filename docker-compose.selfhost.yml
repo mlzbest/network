@@ -1,0 +1,106 @@
+# 检测网络 · 自建后端编排（独立于仓库原有的 Supabase Edge Runtime compose）
+#
+# 用法（先复制 deploy/.env.example 为 deploy/.env 并填写）：
+#   docker compose -f docker-compose.selfhost.yml --env-file deploy/.env up -d --build
+#   docker compose -f docker-compose.selfhost.yml --env-file deploy/.env \
+#     --profile tls up -d --build                       # 启用 Caddy 自动 HTTPS
+#
+# 不带 --profile tls 时：仅在本机 127.0.0.1:BACKEND_PORT 暴露 HTTP，
+# 适合本地验证，或由 Cloudflare / 外部网关终止 TLS。
+#
+# 之所以另起文件：仓库根目录原有的 docker-compose.yml 属于旧 Supabase
+# Edge Runtime 部署链，覆盖它会破坏既有线上配置。
+
+name: detect-network
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-detect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?deploy/.env 中必须设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-detect_network}
+      TZ: Asia/Shanghai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-detect} -d ${POSTGRES_DB:-detect_network}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    # 不对宿主机暴露 5432，仅容器网络内可达
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: detect-network-backend:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # 只绑本机回环，公网入口一律走 Caddy / 外部网关
+      - "127.0.0.1:${BACKEND_PORT:-4000}:4000"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-detect}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-detect_network}
+      JWT_SECRET: ${JWT_SECRET:?deploy/.env 中必须设置 JWT_SECRET（至少 16 位）}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30d}
+      PORT: "4000"
+      TZ: Asia/Shanghai
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:4000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: uploads
+      # Cloudflare R2（仅 STORAGE_DRIVER=r2 时生效）
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      R2_REGION: ${R2_REGION:-auto}
+      R2_TIMEOUT_MS: ${R2_TIMEOUT_MS:-15000}
+      RECOVERY_SMTP_HOST: ${RECOVERY_SMTP_HOST:-}
+      RECOVERY_SMTP_PORT: ${RECOVERY_SMTP_PORT:-587}
+      RECOVERY_SMTP_USER: ${RECOVERY_SMTP_USER:-}
+      RECOVERY_SMTP_PASS: ${RECOVERY_SMTP_PASS:-}
+      RECOVERY_MAIL_FROM: ${RECOVERY_MAIL_FROM:-}
+      WX_APP_ID: ${WX_APP_ID:-}
+      WX_APP_SECRET: ${WX_APP_SECRET:-}
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # 可选：VPS 上提供 HTTPS 443 + 自动证书；Cloudflare Containers 不需要（平台已终止 TLS）
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["tls"]
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"      # ACME HTTP-01 挑战必须可达
+      - "443:443"
+    environment:
+      # 用默认值而非 :? 强制，因为 compose 即使未启用 profile 也会解析该服务；
+      # 启用 tls 前请在 deploy/.env 把它改成真实已备案域名。
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

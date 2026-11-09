@@ -1053,7 +1053,7 @@ const ChatsPage = () => {
       {/* 调试信息:计时器状态改由 [chats]/[page-guard] 日志观测，不再渲染状态条 */}
       <View className="flex flex-row items-center justify-between px-4 py-3 bg-card border-b border-border" style={{ paddingTop: `${statusBarHeight + 12}px`, paddingRight: `${capsuleRightPadding}px` }}>
         <View onClick={handleHiddenClick} className="cursor-pointer">
-          <Text className="text-xl font-bold text-foreground">网络查看</Text>
+          <Text className="text-xl font-bold text-foreground">检测网络</Text>
         </View>
         {/* +号按胶囊实际位置动态避让，永远落在胶囊左侧可点区 */}
         <View

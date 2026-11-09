@@ -1,6 +1,6 @@
-# 网络查看 · 微信 / 钉钉 / 抖音 多端适配方案
+# 检测网络 · 微信 / 钉钉 / 抖音 多端适配方案
 
-> 目标：把现有「网络查看」（Taro 4.2 + React18 + TS + Tailwind v4 + Zustand，后端 Meoo Cloud / Supabase）从纯微信小程序，扩展到微信、钉钉、抖音三端可运行。
+> 目标：把现有「检测网络」（Taro 4.2 + React18 + TS + Tailwind v4 + Zustand，后端 Meoo Cloud / Supabase）从纯微信小程序，扩展到微信、钉钉、抖音三端可运行。
 > 本文为规划文档，结论基于 2026-10-26 对仓库的逐文件核查。
 
 ---

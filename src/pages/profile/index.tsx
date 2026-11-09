@@ -723,7 +723,7 @@ export default function ProfilePage() {
           <Text className="text-xs text-muted-foreground">关于</Text>
           <Text className="text-xs text-muted-foreground">{version.text}</Text>
         </View>
-        <Text className="text-foreground mt-1">网络查看</Text>
+        <Text className="text-foreground mt-1">检测网络</Text>
         <Text className="text-xs text-muted-foreground mt-1 leading-relaxed">
           网络诊断 + AI 解读，帮你快速判断「是网络的问题还是网站的问题」。
         </Text>

@@ -4,6 +4,7 @@ import {
   type MiniProgramWorkBuddyCloudClient,
 } from '@tencent-ai/workbuddy-cloud-sdk/miniprogram';
 import type { Database } from './types';
+import { selfhostClient } from './selfhost-client';
 
 export const CLOUD_STORAGE_BUCKET = 'runtime';
 
@@ -341,12 +342,20 @@ export function getCloudStorageBucket(bucketID?: string): LegacyStorageBucket {
   };
 }
 
+// selfhost 模式下，所有存储读写回落到自建后端（避免循环依赖，直接读 env）
+const SELFHOST = (import.meta.env as any).VITE_AUTH_BACKEND === 'selfhost';
+
 export const cloudStorage = {
   from(bucketID?: string): LegacyStorageBucket {
+    if (SELFHOST) {
+      const b = selfhostClient.storage.from(bucketID as string);
+      return b as unknown as LegacyStorageBucket;
+    }
     return getCloudStorageBucket(bucketID);
   },
 
   getPublicUrl(bucket: string, path: string) {
+    if (SELFHOST) return selfhostClient.storage.getPublicUrl(bucket, path);
     return getCloudStorageBucket(bucket).getPublicUrl(path);
   },
 
@@ -355,10 +364,19 @@ export const cloudStorage = {
     body: Parameters<CloudClient['storage']['upload']>[1],
     options?: Parameters<CloudClient['storage']['upload']>[2],
   ) {
+    if (SELFHOST) {
+      return selfhostClient.storage.from('runtime').upload(path, body, options as any) as any;
+    }
     return getWorkBuddyCloudClient().storage.upload(path, body, options);
   },
 
   createSignedUrl(path: string, expiresIn?: number) {
+    if (SELFHOST) {
+      // 自建后端走 /api/storage/public 代理，URL 永不过期，因此忽略 expiresIn。
+      // 之前这里返回 `{ error: null }` 会让调用方拿到 undefined 的 signedUrl 而静默失败。
+      const { data } = selfhostClient.storage.getPublicUrl('runtime', path);
+      return Promise.resolve({ data: { signedUrl: data.publicUrl }, error: null }) as any;
+    }
     return getWorkBuddyCloudClient().storage.createSignedUrl(path, expiresIn);
   },
 
@@ -368,6 +386,13 @@ export const cloudStorage = {
       CloudClient['storage']['createSignedUploadUrl']
     >[1],
   ) {
+    if (SELFHOST) {
+      // 两阶段签名上传在自建后端未实现；明确报错，不要伪装成成功。
+      return Promise.resolve({
+        data: null,
+        error: new Error('selfhost 不支持 createSignedUploadUrl，请用 storage.from(bucket).upload()'),
+      }) as any;
+    }
     return getWorkBuddyCloudClient().storage.createSignedUploadUrl(path, options);
   },
 };

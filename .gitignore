@@ -17,6 +17,23 @@
 functions-cloud/providers/*/tcb.local.json
 *.pem
 *.key
+# 微信小程序上传私钥所在目录（含真实 .key，绝不提交）
+keys/
+
+# 自建后端（backend/）运行时产物
+backend/.env
+backend/uploads/
+# 本地开发数据库数据目录（PGlite / 原生 PG 两种启动器共用命名前缀）
+backend/.pgdata*/
+# 端到端测试的 esbuild 产物
+backend/.tmp/
+# npm 仅用于本地应急恢复依赖（项目正式锁文件是 pnpm-lock.yaml）
+backend/package-lock.json
+# 容器部署的真实环境变量（只提交 deploy/.env.example 模板）
+deploy/.env
+# Caddy 自动证书与配置缓存（若使用本地挂载而非 volume）
+caddy_data/
+caddy_config/
 
 # 系统文件
 .DS_Store
@@ -133,3 +150,9 @@ tmp/
 .oneday/
 
 .microcompact/
+
+# Cloudflare Containers 部署（deploy/cloudflare/）
+deploy/cloudflare/.dev.vars
+deploy/cloudflare/.hyperdrive.json
+deploy/cloudflare/.wrangler/
+.wrangler/

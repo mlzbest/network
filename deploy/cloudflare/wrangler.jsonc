@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  // 检测网络 · 自建后端 Cloudflare Containers 入口 Worker
+  // 配置说明见 ./README.md；密钥一概不写在此文件，用 `npm run secrets` 注入。
+  "name": "detect-network-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-09",
+  "observability": { "enabled": true },
+
+  // 默认同时开放 workers.dev 预览域；自定义域见文件末尾 routes。
+  "workers_dev": true,
+
+  "containers": [
+    {
+      "class_name": "DetectBackend",
+      // 直接复用仓库里的生产 Dockerfile，不另建镜像定义。
+      // 路径相对本配置文件；build context 必须是 backend/（Dockerfile 内 COPY 依赖它）。
+      "image": "../../backend/Dockerfile",
+      "image_build_context": "../../backend",
+      // Socket.IO 的广播是进程内状态，多实例会漏推送；当前架构固定单例。
+      // 如需横向扩展，先把 realtime 换成跨实例总线（Redis / DO），再调大此值。
+      "max_instances": 1,
+      // 1/4 vCPU / 1 GiB / 4 GB 临时盘。Node 20 + Fastify + pg 足够。
+      "instance_type": "basic",
+      "observability": { "enabled": true }
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "DETECT_BACKEND", "class_name": "DetectBackend" }
+    ]
+  },
+
+  // 新 Worker 用声明式 exports（与 legacy migrations 互斥）。
+  "exports": {
+    "DetectBackend": { "type": "durable-object", "storage": "sqlite" }
+  },
+
+  // 非密钥运行参数。所有密钥走 wrangler secret / .dev.vars。
+  "vars": {
+    "PORT": "4000",
+    "TZ": "Asia/Shanghai",
+    "NODE_ENV": "production",
+    "CORS_ORIGINS": "*",
+    "JWT_EXPIRES_IN": "30d",
+    "PUBLIC_BASE_URL": "https://api.maolizheng.xyz",
+    // 容器磁盘全临时，文件必须落到 R2。
+    "STORAGE_DRIVER": "r2",
+    "R2_REGION": "auto",
+    "R2_TIMEOUT_MS": "15000",
+    // 冷启动时等待外部 Postgres 的预算；外部托管库通常一次即通。
+    // 最坏 3 × (0.5s 间隔 + 3s 探测超时) ≈ 10.5s，留在容器端口就绪窗口内。
+    "DB_WAIT_RETRIES": "3",
+    "DB_WAIT_INTERVAL_MS": "500",
+    "DB_WAIT_PROBE_MS": "3000"
+  },
+
+  // 小程序 request 合法域名要求可备案的自定义域，workers.dev 不能用于生产。
+  // 首次部署若该主机名已有 CNAME，请先清理再启用（见 README「自定义域」）。
+  "routes": [
+    { "pattern": "api.maolizheng.xyz", "custom_domain": true }
+  ]
+}

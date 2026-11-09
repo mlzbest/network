@@ -1,0 +1,27 @@
+# 依赖与构建产物由 Dockerfile 内部重新生成
+node_modules
+dist
+
+# 本地密钥与运行时数据绝不进镜像 / 构建上下文
+.env
+.env.*
+!.env.example
+.pgdata*
+uploads
+keys
+*.key
+*.pem
+.tmp
+*.log
+
+# 本地开发/测试脚本不进镜像（runtime 只单独复制 wait-db.mjs）
+scripts/_*
+scripts/dev-db*.mjs
+scripts/smoke.mjs
+scripts/e2e-adapter.mjs
+scripts/test-r2.mjs
+scripts/smoke-r2-live.mjs
+scripts/prepare-r2-live.mjs
+scripts/r2-rest-relay.mjs
+
+README.md

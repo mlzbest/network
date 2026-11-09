@@ -495,7 +495,7 @@ export default function LoginPage() {
             <View className="mb-4">
               <Text className="block text-sm font-bold text-foreground mb-1">一、服务说明</Text>
               <Text className="block text-xs text-muted-foreground leading-relaxed mb-3">
-                「网络查看」提供网络连通性诊断与 AI 解读功能。账号仅用于识别你的身份、保存你的诊断记录。
+                「检测网络」提供网络连通性诊断与 AI 解读功能。账号仅用于识别你的身份、保存你的诊断记录。
               </Text>
               <Text className="block text-sm font-bold text-foreground mb-1">二、数据与隐私</Text>
               <Text className="block text-xs text-muted-foreground leading-relaxed mb-3">

@@ -1,8 +1,8 @@
 {
   "miniprogramRoot": "./dist",
-  "projectname": "网络查看",
-  "description": "网络查看：网络诊断与 AI 解读",
-  "appid": "touristappid",
+  "projectname": "检测网络",
+  "description": "检测网络：网络诊断与 AI 解读",
+  "appid": "wx24a39e0a660ee585",
   "setting": {
     "urlCheck": true,
     "es6": false,
@@ -12,5 +12,5 @@
     "minified": false
   },
   "compileType": "miniprogram",
-  "packOptions": { "ignore": [{ "type": "folder", "value": "./assets" }] }
+  "packOptions": { "ignore": [] }
 }

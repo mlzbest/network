@@ -1,0 +1,76 @@
+# 检测网络 · VPS 部署编排（当前主路径：外部 Postgres + Cloudflare R2 + Caddy）
+#
+# 用法（先 cp deploy/.env.example deploy/.env 并填好 DATABASE_URL / R2_* / JWT_SECRET）：
+#   docker compose -f docker-compose.vps.yml --env-file deploy/.env up -d --build
+#   docker compose -f docker-compose.vps.yml --env-file deploy/.env --profile tls up -d --build
+#
+# 与 docker-compose.selfhost.yml 的区别：
+#   selfhost  = 容器内自带 Postgres + uploads 本地卷（适合本机/单机全链路验证）
+#   vps       = 数据库在外部（Supabase 等）、文件在 R2、容器无状态可随时重建
+#
+# 为什么数据库不在容器里：沿用 Cloudflare 方案的约束——容器可随时重建，
+# 本地卷易随机器迁移/重装丢失；外部 Postgres + R2 让迁移与备份都更简单。
+#
+# TLS 两种接法：
+#   --profile tls ：Caddy 自动申请证书（需公网 80/443 可达，DNS A 记录指向本机）
+#   不带 profile  ：只在本机回环暴露 4000，由 Cloudflare Tunnel / 已有反代接管
+name: detect-network-vps
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: detect-network-backend:latest
+    restart: unless-stopped
+    # deploy/.env 注入容器（DATABASE_URL / JWT_SECRET / R2_* / SMTP / WX_*）
+    env_file:
+      - ./deploy/.env
+    environment:
+      # 显式插值做启动前校验：缺 DATABASE_URL 直接失败，不让容器带着空串启动
+      DATABASE_URL: ${DATABASE_URL:?deploy/.env 中必须设置 DATABASE_URL（外部 Postgres 连接串）}
+      PORT: "4000"
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      # VPS 也用 R2：机器迁移/重装不丢文件，且与 Cloudflare 方案共用一套存储
+      STORAGE_DRIVER: r2
+      STORAGE_LOCAL_DIR: uploads
+      R2_REGION: ${R2_REGION:-auto}
+      R2_TIMEOUT_MS: ${R2_TIMEOUT_MS:-15000}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://api.maolizheng.xyz}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30d}
+      # 外部库跨公网，给足探测预算（最坏 10 × (1s + 5s) ≈ 60s）
+      DB_WAIT_RETRIES: ${DB_WAIT_RETRIES:-10}
+      DB_WAIT_INTERVAL_MS: ${DB_WAIT_INTERVAL_MS:-1000}
+      DB_WAIT_PROBE_MS: ${DB_WAIT_PROBE_MS:-5000}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-4000}:4000"
+    # 无状态：不挂 uploads 卷（Dockerfile 的 VOLUME 会生成匿名卷，可忽略）
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["tls"]
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:?启用 --profile tls 时必须在 deploy/.env 设置 PUBLIC_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

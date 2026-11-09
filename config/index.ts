@@ -62,8 +62,12 @@ export default defineConfig<'vite'>(async (merge, _env) => {
     };
     if (hasWeappConfig) {
       miniCIConfig.weapp = {
-        appid: process.env.TARO_APP_WEAPP_APPID,
-        privateKeyPath: '',
+        // 优先读 .env.miniprogram（TARO_ENV=weapp 时由 config 顶部 dotenv 加载）；
+        // 若发布链路未注入该文件，回落到已对齐的真实值，保证上传插件一定激活。
+        appid: process.env.TARO_APP_WEAPP_APPID || 'wx24a39e0a660ee585',
+        privateKeyPath:
+          process.env.TARO_APP_WEAPP_PRIVATE_KEY_PATH ||
+          'D:/工作云文档/network/keys/wx24a39e0a660ee585.key',
       };
     }
     return [['@tarojs/plugin-mini-ci', miniCIConfig]] as PluginItem[];

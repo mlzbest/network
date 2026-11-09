@@ -405,7 +405,7 @@ export async function compressAndUploadAvatar(
   const path = `av400-${generateFileName('jpg')}`
   const up = await uploadToSupabase(compressed, { bucket, overridePath: path })
   if (!up.success || !up.data?.path) throw new Error(up.error || '头像上传失败')
-  const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${up.data.path}`
+  const publicUrl = supabase.storage.from(bucket).getPublicUrl(up.data.path).data?.publicUrl || ''
   logDbg(`[upload] ✅ 头像已压缩上传 ${after} bytes:`, publicUrl.slice(0, 70))
   return { publicUrl, path: up.data.path, size: after }
 }

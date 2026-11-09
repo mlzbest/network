@@ -1,0 +1,41 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  // 检测网络 · Cloudflare Workers Free 入口（无容器、无 Workers Paid）
+  // 与 wrangler.jsonc（Containers 备选方案）互斥：同一 custom domain 只能绑一个 Worker。
+  "name": "detect-network-worker",
+  "main": "src/worker.ts",
+  // >= 2026-08-04 默认启用 nodejs_compat（node:crypto / net / stream 等原生实现）。
+  "compatibility_date": "2026-11-09",
+  "observability": { "enabled": true },
+  "workers_dev": true,
+
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      // provision-hyperdrive.mjs 创建配置后会把真实 id 写回这里。
+      // 全 0 是本地开发占位：wrangler dev 使用 localConnectionString，不查远端 config。
+      "id": "00000000000000000000000000000000",
+      "localConnectionString": "postgres://postgres:postgres@127.0.0.1:55432/postgres"
+    }
+  ],
+
+  // 非密钥运行参数。JWT_SECRET / R2_* 等走 wrangler secret / .dev.vars。
+  // DATABASE_URL 不需要注入 Worker：Hyperdrive binding 直接提供 connectionString。
+  "vars": {
+    "NODE_ENV": "production",
+    "TZ": "Asia/Shanghai",
+    "CORS_ORIGINS": "*",
+    "JWT_EXPIRES_IN": "30d",
+    "PUBLIC_BASE_URL": "https://api.maolizheng.xyz",
+    "STORAGE_DRIVER": "r2",
+    "R2_REGION": "auto",
+    "R2_TIMEOUT_MS": "15000"
+  },
+
+  // 小程序 request 合法域名要求可备案的自定义域，workers.dev 不能用于生产。
+  // 部署前确认此域名没有绑到 Containers Worker（wrangler.jsonc）。
+  "routes": [
+    { "pattern": "api.maolizheng.xyz", "custom_domain": true }
+  ]
+}

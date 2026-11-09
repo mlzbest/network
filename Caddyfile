@@ -1,0 +1,26 @@
+# 检测网络 · 自动 HTTPS 反向代理
+#
+# PUBLIC_DOMAIN 由 compose 从 deploy/.env 注入。
+# 未设置时回落到 localhost：Caddy 会用本地 CA 签发自签证书，便于本机调试。
+# 生产环境请把 DNS A 记录指向本机、放行 80/443，Caddy 会自动申请并续期证书。
+#
+# reverse_proxy 默认支持 WebSocket 升级，Socket.IO（/socket.io/）无需额外配置。
+
+{$PUBLIC_DOMAIN:localhost} {
+	encode zstd gzip
+
+	reverse_proxy backend:4000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+		# 图片经 base64 上传，允许较长的请求处理时间
+		transport http {
+			read_timeout 60s
+			write_timeout 60s
+		}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

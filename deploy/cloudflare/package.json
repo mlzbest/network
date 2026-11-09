@@ -1,0 +1,31 @@
+{
+  "name": "detect-network-cloudflare",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "检测网络自建后端的 Cloudflare Containers 入口 Worker 与部署工具",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:backend": "pnpm --dir ../../backend build",
+    "dry-run": "wrangler deploy --dry-run --outdir .wrangler/dry-run --containers-rollout=none",
+    "preflight": "node scripts/preflight.mjs",
+    "secrets": "node scripts/put-secrets.mjs",
+    "provision-r2": "node scripts/provision-r2.mjs",
+    "bootstrap-db": "node scripts/bootstrap-db.mjs",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "preflight:workers": "node scripts/preflight.mjs --workers",
+    "provision-hyperdrive": "node scripts/provision-hyperdrive.mjs",
+    "dev:workers": "wrangler dev -c wrangler.workers.jsonc --local --port 8791",
+    "dry-run:workers": "wrangler deploy --dry-run --outdir .wrangler/dry-run-workers -c wrangler.workers.jsonc",
+    "deploy:workers": "wrangler deploy -c wrangler.workers.jsonc"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261109.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.158.0"
+  }
+}
