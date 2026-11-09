@@ -156,3 +156,6 @@ deploy/cloudflare/.dev.vars
 deploy/cloudflare/.hyperdrive.json
 deploy/cloudflare/.wrangler/
 .wrangler/
+
+# deploy/switch-backend.mjs 切换前的原文件备份（可能含真实密钥，禁止入库）
+deploy/.backups/

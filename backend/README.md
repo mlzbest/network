@@ -400,8 +400,9 @@ npx wrangler containers list && npx wrangler containers images list
   WebSocket，Socket.IO 可透传；前端当前 `.channel()` 仍是轮询兜底，未依赖长连接。
 - 计费：Workers Paid $5/月 + Containers 按运行时长（含 25 GiB-hours / 375 vCPU-min
   / 200 GB-hours 月度额度）+ 出口流量；`observability` 自 2026-12-01 起按 Observability 计费。
-- 前端切换：`.env` / `.env.miniprogram` 设 `VITE_AUTH_BACKEND=selfhost`、
-  `VITE_DATA_BACKEND=selfhost`、`VITE_SELFHOST_API_BASE=https://api.maolizheng.xyz`。
+- 前端切换：`.env` / `.env.miniprogram` 只需设 `VITE_AUTH_BACKEND=selfhost` 与
+  `VITE_SELFHOST_API_BASE=https://api.maolizheng.xyz`，或在项目根执行
+  `node deploy/switch-backend.mjs selfhost --check`。
 
 ## 八、迁移存量数据
 
@@ -421,7 +422,8 @@ pg_dump "$MEOO_DATABASE_URL" --data-only --no-owner \
 2026-11-09 决策：不升级 Workers Paid，改用 **VPS + 外部 Postgres（Supabase 免费层）
 + Cloudflare R2**；§七 的 Containers 配置原样保留，日后开通订阅可直接切换。
 **同日稍后已改为优先走 §十 的 Workers Free 方案**，本节保留为「需要长驻
-Socket.IO / SMTP 直连」时的备选路径。
+Socket.IO 实时推送」时的备选路径（找回密码发信已由 §10.6 的 HTTP 邮件 API 解决，
+不再依赖 SMTP 直连）。
 
 ```
 小程序 / H5 → https://api.maolizheng.xyz（Cloudflare Tunnel 或 DNS + Caddy）
@@ -495,13 +497,16 @@ curl https://api.maolizheng.xyz/api/health
 可安全用于任一方案。上线前还需在微信公众平台把该域名加入
 **request 合法域名**（小程序不允许 `workers.dev` / 未备案域名）。
 
-前端三行（`.env` 与 `.env.miniprogram`）：
+前端两行（`.env` 与 `.env.miniprogram`）：
 
 ```ini
 VITE_AUTH_BACKEND=selfhost
-VITE_DATA_BACKEND=selfhost
 VITE_SELFHOST_API_BASE=https://api.maolizheng.xyz
 ```
+
+> 旧文档曾列 `VITE_DATA_BACKEND`；该键不存在，`src/supabase/client.ts` 与
+> `selfhost-client.ts` 都不读取，配置它不会有任何效果。用
+> `node deploy/switch-backend.mjs status` 可查看当前生效的开关。
 
 ### 9.4 成本与回滚
 
@@ -595,9 +600,19 @@ CLOUDFLARE_API_TOKEN=<token> npm run deploy:workers
 连接串只在本机给 `provision-hyperdrive` / `bootstrap-db` 用，不会上传为
 Worker Secret；容器模式仍会注入 `DATABASE_URL`。
 
-前端 `.env` / `.env.miniprogram` 三行不变：
-`VITE_AUTH_BACKEND=selfhost`、`VITE_DATA_BACKEND=selfhost`、
-`VITE_SELFHOST_API_BASE=https://api.maolizheng.xyz`。
+前端 `.env` / `.env.miniprogram` 只需两行：`VITE_AUTH_BACKEND=selfhost`、
+`VITE_SELFHOST_API_BASE=https://api.maolizheng.xyz`。**必须在 Worker 部署完成且
+`/api/health` 返回 200 之后才切换**，否则小程序会连到不存在的域名。回到项目根执行：
+
+```bash
+node deploy/switch-backend.mjs status                 # 查看当前开关
+node deploy/switch-backend.mjs selfhost --check      # 健康检查通过才切换
+pnpm build:weapp                                     # Vite 环境变量在构建时注入
+node deploy/switch-backend.mjs legacy                # 一键回滚到 Meoo Cloud 网关
+```
+
+脚本幂等、只改这两个键、保留其它所有行，并把原文件备份到
+`deploy/.backups/`（已 gitignore）。本轮**只提供工具，未执行切换**。
 
 ### 10.4 本地实测（2026-11-09，北京）
 
@@ -618,9 +633,9 @@ Workers Free**（临时 `detect-network-bench` Worker，测完已删除）后，
 
 - **实时推送**：Workers 下 `broadcastChange` 是 no-op；前端 `.channel()` 本就是
   轮询兜底，不影响消息可达性。需要真 WebSocket 时只能走 §九 的 Node 路径。
-- **找回密码邮件**：`edge/smtp.ts` 用 `node:net/tls` 直连 25/465/587，Workers
-  出站不支持；未配置 SMTP 时接口明确返回 `RESET_CONFIG_MISSING`。要启用需改成
-  HTTP 邮件 API（Resend / Mailgun）。
+- **找回密码邮件**：SMTP 直连（`node:net/tls`）在 Workers 出站不可用，但已由
+  §10.6 的 HTTP 邮件 API 通道解决；一条发信通道都没配时仍返回
+  `RESET_CONFIG_MISSING`。
 - **限频**：`edge/routes.ts` 的实例级内存 Map 只在同一 isolate 内有效，不跨实例。
 - **域名**：`api.maolizheng.xyz` 需完成 ICP 备案 + HTTPS；该 custom domain 与
   §七 的 Containers Worker 互斥，只能绑一个。
@@ -628,3 +643,30 @@ Workers Free**（临时 `detect-network-bench` Worker，测完已删除）后，
   缓存 SELECT 导致读到过期会话。
 - **免费层波动**：Supabase Free 项目 1 周无活动会暂停；保持 Docker 镜像 +
   标准 Postgres，随时可回退到 §九 / §十 之外的方案。
+
+### 10.6 Workers 下的找回密码发信（HTTP 邮件 API）
+
+`edge/mail.ts` 是统一投递入口，`edge/mail-content.ts` 与 SMTP 共用主题/正文。
+`MAIL_DRIVER=auto`（默认）按 `RESEND_API_KEY` → `RECOVERY_MAIL_API_URL` → SMTP
+顺序选路；`http` / `smtp` 可强制单一通道。SMTP 实现由 `launch.ts` 注入
+`globalThis.__DETECT_SMTP_SEND__`（与实时广播 `__DETECT_REALTIME_EMIT__` 同一套机制），
+Workers 不注入，因此 Worker bundle **完全不含** `node:net` / `node:tls`。
+注意：静态 import 与动态 import 都会被 esbuild 内联成 bundle 顶层 import，
+所以这里不能用 `await import('./smtp.js')` 来规避。
+
+| 通道 | 必填 | 请求体 |
+| --- | --- | --- |
+| Resend | `RESEND_API_KEY` + `RECOVERY_MAIL_FROM` | `POST https://api.resend.com/emails`：`{ from, to:[...], subject, text, html }` |
+| 自定义网关 | `RECOVERY_MAIL_API_URL` + `RECOVERY_MAIL_FROM` | `POST <URL>`：`{ from, to, subject, text, html, code, ttl_minutes }`；`RECOVERY_MAIL_API_KEY` 作 Bearer |
+| SMTP（仅 Node / VPS） | `RECOVERY_SMTP_HOST/USER/PASS` + `RECOVERY_MAIL_FROM` | 465 隐式 TLS / 587 STARTTLS |
+
+`RESEND_API_URL` 可覆盖默认端点（代理 / 本地 mock），`RECOVERY_MAIL_TIMEOUT_MS`
+默认 15000。这些键由 `secrets -- --workers` 注入，模板见 `.dev.vars.example`。
+`pnpm --dir backend test:mail` 用本地 HTTP mock 验证选路、请求体、SMTP 注入、
+5xx、端点不可达与超时，40/40 通过，不需要真实邮箱服务或数据库。
+
+**顺带修复的顺序缺陷**：旧 `recoverySend()` 先把验证码哈希写进 `profiles`，再检查
+发信配置并发信。配置缺失或投递失败时会留下一个用户永远收不到的「死码」，同时作废
+上一次仍有效的验证码，还白白消耗该账号的限频额度。现在改为「先确认通道可用 →
+写哈希 → 发信」，投递失败时带哈希条件回滚清空（避免误清并发新码），返回 502
+而不是抛异常。

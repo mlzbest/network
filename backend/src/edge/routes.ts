@@ -5,7 +5,7 @@ import { env } from '../env.js';
 import { requireAuth, parseAuth } from '../auth/guard.js';
 import { hashPassword } from '../auth/password.js';
 import { signToken } from '../auth/jwt.js';
-import { sendViaExternal } from './smtp.js';
+import { getMailConfig, sendRecoveryCode } from './mail.js';
 
 /**
  * 原 Meoo Edge Functions 的自建后端等价实现。
@@ -110,19 +110,11 @@ async function recoverySend(
     return { status: 429, body: { error: '该账号请求过于频繁，请一分钟后再试' } };
   }
 
-  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-  const tokenHash = sha256Hex(code);
-  await query(
-    'UPDATE profiles SET recovery_token_hash = $1, recovery_sent_at = now() WHERE id = $2',
-    [tokenHash, account.id],
-  );
-
-  // 发信：自建后端只有外部 SMTP 通道（无平台内置回环邮件服务）
-  const host = env.RECOVERY_SMTP_HOST;
-  const user = env.RECOVERY_SMTP_USER;
-  const pass = env.RECOVERY_SMTP_PASS;
-  const from = env.RECOVERY_MAIL_FROM || user;
-  if (!host || !user || !pass || !from) {
+  // 先确认发信通道可用，再写验证码哈希。
+  // 旧实现顺序相反：配置缺失 / 发信失败时，库里已经留下一个用户永远收不到的
+  // 验证码哈希，还会作废上一次仍有效的验证码，并白白消耗本账号的限频额度。
+  const mailCfg = getMailConfig();
+  if (!mailCfg) {
     return {
       status: 503,
       body: {
@@ -132,19 +124,28 @@ async function recoverySend(
     };
   }
 
-  try {
-    await sendViaExternal(
-      { to: inputEmail, from, code, ttlMinutes: Math.round(TOKEN_TTL_MS / 60000) },
-      {
-        host,
-        port: env.RECOVERY_SMTP_PORT ?? 587,
-        user,
-        pass,
-        from,
-      },
-    );
-  } catch (err: any) {
-    console.error('[recovery] external smtp failed:', err?.message ?? String(err));
+  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+  const tokenHash = sha256Hex(code);
+  await query(
+    'UPDATE profiles SET recovery_token_hash = $1, recovery_sent_at = now() WHERE id = $2',
+    [tokenHash, account.id],
+  );
+
+  const sent = await sendRecoveryCode(
+    { to: inputEmail, from: mailCfg.from, code, ttlMinutes: Math.round(TOKEN_TTL_MS / 60000) },
+    mailCfg,
+  );
+  if (!sent.ok) {
+    // 回滚到「无待验证验证码」状态；带 hash 条件避免误清并发发出的新验证码。
+    try {
+      await query(
+        'UPDATE profiles SET recovery_token_hash = NULL, recovery_sent_at = NULL WHERE id = $1 AND recovery_token_hash = $2',
+        [account.id, tokenHash],
+      );
+    } catch (rollbackErr: any) {
+      console.error('[recovery] rollback failed:', rollbackErr?.message ?? String(rollbackErr));
+    }
+    console.error(`[recovery] ${sent.driver} send failed:`, sent.message);
     return { status: 502, body: { error: '邮件发送失败，请稍后重试或联系管理员' } };
   }
 

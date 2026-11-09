@@ -31,11 +31,18 @@ R2_SECRET_ACCESS_KEY=
 # R2_ENDPOINT=
 
 # 找回密码邮件（不配则「忘记密码」返回 RESET_CONFIG_MISSING）
-# RECOVERY_SMTP_HOST=
-# RECOVERY_SMTP_PORT=
-# RECOVERY_SMTP_USER=
-# RECOVERY_SMTP_PASS=
-# RECOVERY_MAIL_FROM=
+# ⚠ Workers Free 无 TCP socket，RECOVERY_SMTP_* 在这里无效，必须走 HTTP 邮件 API。
+# MAIL_DRIVER=auto 时按 RESEND_API_KEY → RECOVERY_MAIL_API_URL → SMTP 顺序选路。
+# 方案 A · Resend（推荐）：填 API key + 发件人，纯 fetch，无需额外服务。
+# RESEND_API_KEY=
+# RESEND_API_URL=              # 覆盖默认 https://api.resend.com/emails，一般留空
+# 方案 B · 自定义 HTTP 邮件网关：POST JSON
+#   { from, to, subject, text, html, code, ttl_minutes }，可选 Bearer 鉴权。
+# RECOVERY_MAIL_API_URL=
+# RECOVERY_MAIL_API_KEY=
+# RECOVERY_MAIL_TIMEOUT_MS=15000
+# RECOVERY_MAIL_FROM=         # A / B 都必填，须为已验证域名下的地址
+# MAIL_DRIVER=auto
 
 # 微信小程序登录 jscode2session（不配则微信登录返回 WX_CONFIG_MISSING）
 # WX_APP_ID=

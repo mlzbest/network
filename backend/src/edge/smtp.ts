@@ -1,6 +1,7 @@
 import * as net from 'node:net';
 import * as tls from 'node:tls';
 import { randomUUID } from 'node:crypto';
+import { buildMailContent, type MailOptions } from './mail-content.js';
 
 /**
  * 极简 SMTP 客户端（Node 版）。
@@ -21,27 +22,10 @@ function wrapBase64(s: string): string {
   return s.match(/.{1,76}/g)?.join(CRLF) ?? s;
 }
 
-interface MailOptions {
-  to: string;
-  from: string;
-  code: string;
-  ttlMinutes: number;
-}
-
+/** 把通道无关的主题/正文包装成 SMTP 可用的完整 MIME（仅 Node / VPS 路径使用）。 */
 function buildMime(opts: MailOptions): string {
-  const subject = '你的登录密码重置验证码';
+  const { subject, text, html } = buildMailContent(opts);
   const boundary = `selfhost-${randomUUID()}`;
-  const plain = [
-    '你正在重置「检测网络」的登录密码。',
-    '',
-    `本次验证码：${opts.code}，请在应用内的「重置密码」页面输入这 ${opts.code.length} 位数字，${opts.ttlMinutes} 分钟内有效。`,
-  ].join('\n');
-  const html = [
-    '<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;color:#1f2937;line-height:1.7">',
-    '<p>你正在重置「检测网络」的登录密码。</p>',
-    `<p>本次验证码：<b style="font-size:20px;letter-spacing:3px">${opts.code}</b>，请在应用内的「重置密码」页面输入这 ${opts.code.length} 位数字，<b>${opts.ttlMinutes} 分钟内有效</b>。</p>`,
-    '</div>',
-  ].join('');
   return [
     `From: ${opts.from}`,
     `To: ${opts.to}`,
@@ -55,7 +39,7 @@ function buildMime(opts: MailOptions): string {
     'Content-Type: text/plain; charset=UTF-8',
     'Content-Transfer-Encoding: base64',
     '',
-    wrapBase64(b64(plain.replace(/\n/g, CRLF))),
+    wrapBase64(b64(text.replace(/\n/g, CRLF))),
     '',
     `--${boundary}`,
     'Content-Type: text/html; charset=UTF-8',

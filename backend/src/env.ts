@@ -38,12 +38,26 @@ const schema = z
     PUBLIC_BASE_URL: z.string().optional(),
     // 可选：Meoo Cloud 老库连接串，仅用于 pg_dump 同步提示（不进运行时逻辑）
     MEOO_DATABASE_URL: z.string().optional(),
-    // 找回密码：外部 SMTP（465 隐式 TLS / 其它端口 STARTTLS）
+    // 找回密码发信通道。Workers Free 无 TCP socket，SMTP 不可用，必须走 HTTP 邮件 API。
+    // auto：Resend key → 自定义 HTTP endpoint → SMTP；http：强制自定义端点；smtp：强制 SMTP。
+    MAIL_DRIVER: z.preprocess(
+      (v) => (v === '' || v == null ? 'auto' : v),
+      z.enum(['auto', 'http', 'smtp']),
+    ),
+    // Resend（https://resend.com）：只需 API key，纯 fetch 即可。
+    RESEND_API_KEY: z.string().optional(),
+    // 可覆盖默认 https://api.resend.com/emails，便于走代理或本地 mock。
+    RESEND_API_URL: z.string().optional(),
+    // 通用 HTTP 邮件网关：POST JSON { from, to, subject, text, html, code, ttl_minutes }
+    RECOVERY_MAIL_API_URL: z.string().optional(),
+    RECOVERY_MAIL_API_KEY: z.string().optional(),
+    RECOVERY_MAIL_TIMEOUT_MS: positiveInt(15_000),
+    RECOVERY_MAIL_FROM: z.string().optional(),
+    // 外部 SMTP（465 隐式 TLS / 其它端口 STARTTLS），仅 Node / VPS 可用。
     RECOVERY_SMTP_HOST: z.string().optional(),
     RECOVERY_SMTP_PORT: z.coerce.number().optional(),
     RECOVERY_SMTP_USER: z.string().optional(),
     RECOVERY_SMTP_PASS: z.string().optional(),
-    RECOVERY_MAIL_FROM: z.string().optional(),
     // 微信小程序登录（jscode2session 所需，可选）
     WX_APP_ID: z.string().optional(),
     WX_APP_SECRET: z.string().optional(),
@@ -78,6 +92,18 @@ const schema = z
         path: ['R2_ENDPOINT'],
         message: 'R2_ENDPOINT 必须是完整 http(s) URL',
       });
+    }
+    for (const [name, value] of [
+      ['RESEND_API_URL', val.RESEND_API_URL],
+      ['RECOVERY_MAIL_API_URL', val.RECOVERY_MAIL_API_URL],
+    ] as const) {
+      if (value && !/^https?:\/\//i.test(value)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [name],
+          message: `${name} 必须是完整 http(s) URL`,
+        });
+      }
     }
   });
 

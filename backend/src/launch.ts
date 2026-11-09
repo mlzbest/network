@@ -9,9 +9,14 @@ import type { Server as HttpServer } from 'node:http';
 import { env, corsOrigins } from './env.js';
 import { build } from './server.js';
 import { initRealtime, broadcastChange } from './realtime/index.js';
+import { sendViaExternal } from './edge/smtp.js';
 
 // 数据层不静态依赖 socket.io，改由 Node 入口注入广播实现（Workers 下为 no-op）。
 (globalThis as Record<string, unknown>).__DETECT_REALTIME_EMIT__ = broadcastChange;
+// SMTP 依赖 node:net / node:tls，Workers 不支持。同样只在 Node 入口注入，
+// 保证 Worker bundle 完全不含这两个模块（静态 import 与动态 import 都会被
+// esbuild 内联进 bundle 顶层，因此必须走运行时注入）。
+(globalThis as Record<string, unknown>).__DETECT_SMTP_SEND__ = sendViaExternal;
 
 async function main() {
   const app = await build();

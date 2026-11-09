@@ -17,6 +17,7 @@
     "test:api": "node scripts/smoke.mjs",
     "test:adapter": "node scripts/e2e-adapter.mjs",
     "test:r2": "pnpm build && node scripts/test-r2.mjs",
+    "test:mail": "pnpm build && node scripts/test-mail.mjs",
     "test:r2:live": "pnpm build && node scripts/smoke-r2-live.mjs",
     "test:r2:live:prepare": "pnpm build && node scripts/prepare-r2-live.mjs",
     "test:e2e": "node scripts/smoke.mjs && node scripts/e2e-adapter.mjs"
