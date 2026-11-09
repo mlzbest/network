@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  // 域名引导配置（临时态）：只绑定 Custom Domain，不加载业务后端。
+  // 与 wrangler.workers.jsonc 使用同一个 Worker 名字，正式部署时直接覆盖。
+  // 不使用 Hyperdrive / Secrets / backend dist，因此不依赖 DATABASE_URL。
+  "name": "detect-network-worker",
+  "main": "src/domain-probe.ts",
+  "compatibility_date": "2026-11-09",
+  "observability": { "enabled": true },
+  "workers_dev": false,
+
+  "vars": {
+    "PUBLIC_BASE_URL": "https://api.maolizheng.xyz"
+  },
+
+  // wrangler deploy 会自动创建 DNS 记录 + Custom Domain 绑定，并套用 Zone 级
+  // Universal SSL 证书（SAN 已含 *.maolizheng.xyz）。
+  "routes": [
+    { "pattern": "api.maolizheng.xyz", "custom_domain": true }
+  ]
+}

@@ -637,8 +637,9 @@ Workers Free**（临时 `detect-network-bench` Worker，测完已删除）后，
   §10.6 的 HTTP 邮件 API 通道解决；一条发信通道都没配时仍返回
   `RESET_CONFIG_MISSING`。
 - **限频**：`edge/routes.ts` 的实例级内存 Map 只在同一 isolate 内有效，不跨实例。
-- **域名**：`api.maolizheng.xyz` 需完成 ICP 备案 + HTTPS；该 custom domain 与
-  §七 的 Containers Worker 互斥，只能绑一个。
+- **域名**：HTTPS / 证书 / DNS / Custom Domain 绑定已于 2026-11-10 就绪（见 §10.7）；
+  仍需完成 ICP 备案，并在小程序后台把 `https://api.maolizheng.xyz` 加入 request
+  合法域名。该 custom domain 与 §七 的 Containers Worker 互斥，只能绑一个。
 - **Hyperdrive 缓存已禁用**（`caching.disabled=true`）：聊天写多读多，避免
   缓存 SELECT 导致读到过期会话。
 - **免费层波动**：Supabase Free 项目 1 周无活动会暂停；保持 Docker 镜像 +
@@ -670,3 +671,40 @@ Workers 不注入，因此 Worker bundle **完全不含** `node:net` / `node:tls
 上一次仍有效的验证码，还白白消耗该账号的限频额度。现在改为「先确认通道可用 →
 写哈希 → 发信」，投递失败时带哈希条件回滚清空（避免误清并发新码），返回 502
 而不是抛异常。
+
+### 10.7 域名引导与证书（2026-11-10，北京）
+
+**证书不需要单独签发。** Cloudflare Universal SSL 是 Zone 级证书，实测账户下只有
+一张 `universal / active` 证书包，hosts 为 `maolizheng.xyz, *.maolizheng.xyz`，
+由 Google Trust Services `WE1` 签发，有效期至北京 2027-01-18 18:40。
+`api.maolizheng.xyz` 已落在通配 SAN 内。为单个子域签发专属证书需要付费的
+Advanced Certificate Manager，对微信小程序没有任何额外收益。
+
+**域名绑定的正确触发方式**：Cloudflare 不允许为「尚不存在的 Worker」手工创建
+Custom Domain，DNS 记录与绑定都由 `wrangler deploy` 自动完成。因此在数据库就绪前，
+先用 `wrangler.domain.jsonc` + `src/domain-probe.ts` 部署同名占位 Worker：
+
+```bash
+cd deploy/cloudflare
+npm run dry-run:domain     # 打包预演，1.16 KiB
+npm run deploy:domain      # 需 CLOUDFLARE_API_TOKEN；创建 DNS + Custom Domain
+```
+
+部署后 Cloudflare 自动生成 `AAAA 100::`（proxied）记录并绑定
+`api.maolizheng.xyz → detect-network-worker`。实测：
+`https://api.maolizheng.xyz/__worker/health` 返回 200，`ssl_verify_result=0`，
+TLS 1.2 / 1.3 均可用，证书链完整；与 `proxy.maolizheng.xyz` 为同一张证书。
+
+**引导态的安全约束**：`/api/health` 刻意返回 `503 BACKEND_NOT_DEPLOYED`，
+避免 `deploy/switch-backend.mjs selfhost --check` 误判后端已就绪而把前端切到
+一个没有数据库的 selfhost 地址。实测该守护确实拒绝切换（退出码 3），
+`.env` / `.env.miniprogram` 保持 `legacy` 未被改动。
+
+**正式部署时无需清理域名**：`npm run deploy:workers` 用同一个 Worker 名字覆盖，
+Custom Domain 与 DNS 记录由 Cloudflare 复用。`preflight.mjs --workers` 已改为
+先查 Workers Custom Domains：域名已绑定目标 Worker 时报 OK 并提示复用，
+不再误报「需清理 DNS」；绑定到其它 Worker 时才报 BLOCK。
+
+**仍需人工完成的两项**（工具无法代做）：域名 ICP 备案有效性确认；微信公众平台
+「开发管理 → 开发设置 → 服务器域名」把 `https://api.maolizheng.xyz` 加入 request
+合法域名（不能带端口或路径，平台会校验备案）。小程序自身也需完成 ICP 代备案。

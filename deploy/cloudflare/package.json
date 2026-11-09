@@ -18,7 +18,9 @@
     "provision-hyperdrive": "node scripts/provision-hyperdrive.mjs",
     "dev:workers": "wrangler dev -c wrangler.workers.jsonc --local --port 8791",
     "dry-run:workers": "wrangler deploy --dry-run --outdir .wrangler/dry-run-workers -c wrangler.workers.jsonc",
-    "deploy:workers": "wrangler deploy -c wrangler.workers.jsonc"
+    "deploy:workers": "wrangler deploy -c wrangler.workers.jsonc",
+    "dry-run:domain": "wrangler deploy --dry-run --outdir .wrangler/dry-run-domain -c wrangler.domain.jsonc",
+    "deploy:domain": "wrangler deploy -c wrangler.domain.jsonc"
   },
   "dependencies": {
     "@cloudflare/containers": "^0.3.7"

@@ -158,14 +158,30 @@ else {
   ok(`Zone ${zone.name}（${zone.id.slice(0, 8)}…）状态 ${zone.status}`);
   const dns = await cf(`/zones/${zone.id}/dns_records?per_page=100`);
   const records = (dns.result || []).filter((r) => r.name === DOMAIN);
+
+  // Cloudflare 为 Workers Custom Domain 自动创建 proxied DNS（典型为 AAAA 100::）。
+  // 这类记录属于正常状态，正式部署时 Wrangler 直接复用，不应提示清理。
+  let boundTo = '';
+  if (!vps) {
+    const domains = await cf(`/accounts/${aid}/workers/domains`);
+    const hit = (domains.result || []).find((d) => d.hostname === DOMAIN);
+    if (hit) boundTo = hit.service || '(unknown)';
+    if (!domains.success) warn('Workers Custom Domains 接口查询失败，DNS 记录类型需人工确认');
+  }
+
   if (vps) {
     if (!records.length) {
       warn(`${DOMAIN} 尚无 DNS 记录；VPS 模式需手动建 A/AAAA 指向 VPS，或改用 Cloudflare Tunnel`);
     } else {
       ok(`${DOMAIN} 已有 ${records.map((r) => r.type).join('/')} 记录，请确认指向 VPS / Tunnel`);
     }
+  } else if (boundTo) {
+    ok(`${DOMAIN} 已绑定 Custom Domain → ${boundTo}；DNS 由 Cloudflare 托管，正式部署直接复用`);
+    if (boundTo !== 'detect-network-worker') {
+      block(`${DOMAIN} 被其它 Worker 占用（${boundTo}）；同一 custom domain 只能绑一个 Worker`);
+    }
   } else if (records.length) {
-    warn(`${DOMAIN} 已有 ${records.map((r) => r.type).join('/')} 记录；Custom Domain 要求无既有 CNAME，部署前需清理`);
+    warn(`${DOMAIN} 已有 ${records.map((r) => r.type).join('/')} 记录但未绑定 Custom Domain；部署前需清理`);
   } else ok(`${DOMAIN} 无既有 DNS 记录，Custom Domain 可自动创建`);
 }
 
