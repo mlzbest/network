@@ -15,8 +15,16 @@ import { spawnSync } from 'node:child_process';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const dryRun = process.argv.includes('--dry-run');
+const workers = process.argv.includes('--workers');
 // --workers 时写入 Workers Free 入口（wrangler.workers.jsonc）；默认写 Containers 入口。
-const configArgs = process.argv.includes('--workers') ? ['-c', 'wrangler.workers.jsonc'] : [];
+const configArgs = workers ? ['-c', 'wrangler.workers.jsonc'] : [];
+
+// Workers Free 模式下数据库由 Hyperdrive binding 提供，DATABASE_URL 只供
+// provision-hyperdrive / bootstrap-db 本机使用，绝不能作为 Worker Secret 上传。
+// 平台级凭据同理；容器内需要 DATABASE_URL，所以仅在 --workers 时排除。
+const WORKERS_SKIP = new Set([
+  'DATABASE_URL', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID',
+]);
 
 const OPTIONAL = new Set([
   'R2_PUBLIC_URL', 'R2_ENDPOINT',
@@ -32,6 +40,7 @@ if (!existsSync(p)) {
 }
 
 const entries = [];
+const skipped = [];
 for (const raw of readFileSync(p, 'utf8').split(/\r?\n/)) {
   const line = raw.trim();
   if (!line || line.startsWith('#')) continue;
@@ -42,6 +51,7 @@ for (const raw of readFileSync(p, 'utf8').split(/\r?\n/)) {
   if ((value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
   if (!value) continue;               // 空值 / 注释掉的可选项跳过
+  if (workers && WORKERS_SKIP.has(key)) { skipped.push(key); continue; }
   entries.push([key, value]);
 }
 
@@ -50,6 +60,9 @@ if (entries.length === 0) {
   process.exit(1);
 }
 
+if (skipped.length) {
+  console.log(`[secrets] Workers 模式跳过内部专用键（不上传）：${skipped.join(', ')}`);
+}
 console.log(`[secrets] 待写入 ${entries.length} 项：${entries.map(([k]) => k).join(', ')}`);
 if (dryRun) {
   console.log('[secrets] --dry-run：未写入');

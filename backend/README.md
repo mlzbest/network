@@ -585,6 +585,16 @@ npm run dry-run:workers
 CLOUDFLARE_API_TOKEN=<token> npm run deploy:workers
 ```
 
+`preflight:workers` 退出码：`0` 可部署、`1` 阻塞、`2` Token 不可用、
+`3` 基础检查通过但尚缺 `DATABASE_URL` / Hyperdrive 配置或真实 id。退出 `3` 时
+**不要**直接 `wrangler deploy`，先跑 `provision-hyperdrive` 把真实 id 写回
+`wrangler.workers.jsonc` 再复检。
+
+`secrets -- --workers` 会自动跳过 `DATABASE_URL`、`CLOUDFLARE_API_TOKEN`、
+`CLOUDFLARE_ACCOUNT_ID`：Workers Free 的数据库由 Hyperdrive binding 提供，
+连接串只在本机给 `provision-hyperdrive` / `bootstrap-db` 用，不会上传为
+Worker Secret；容器模式仍会注入 `DATABASE_URL`。
+
 前端 `.env` / `.env.miniprogram` 三行不变：
 `VITE_AUTH_BACKEND=selfhost`、`VITE_DATA_BACKEND=selfhost`、
 `VITE_SELFHOST_API_BASE=https://api.maolizheng.xyz`。

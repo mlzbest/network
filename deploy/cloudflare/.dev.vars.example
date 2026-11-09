@@ -5,8 +5,9 @@
 #    本文件只是键名清单，值一律留空或占位。
 
 # ─── 必填：外部 Postgres（仅用于 provision-hyperdrive / bootstrap-db）────────
-# Workers Free 模式：数据库由 Hyperdrive binding 提供，本项**不会**注入 Worker Secret；
-# 但创建 Hyperdrive 配置与初始化表结构时需要原始连接串。
+# Workers Free 模式：数据库由 Hyperdrive binding 提供，`secrets -- --workers`
+# 会自动跳过本项，绝不注入 Worker Secret；但创建 Hyperdrive 配置与初始化表结构
+# 时需要原始连接串（仅本机读取，不进聊天记录、不进命令行参数）。
 # 容器模式：本项会作为 Secret 注入容器 env。
 # 支持 Neon / Supabase / Aiven / 自建 VPS 等任意 Postgres 14+。
 # Supabase 免费层必须用 Session pooler 5432（不要用 6543），追加 ?sslmode=require，

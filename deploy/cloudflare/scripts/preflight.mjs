@@ -9,7 +9,7 @@
  * 检查项：Token/Account、R2 开通、Zone 与域名 DNS、本机工具链、
  *         运行密钥完整性、外部 Postgres 连通性。
  * Containers 模式额外检查 Workers Paid 订阅；Workers/VPS 模式不检查（不需要该订阅）。
- * 退出码：0 全部就绪；1 存在阻塞项；2 Token 不可用。
+ * 退出码：0 全部就绪；1 存在阻塞项；2 Token 不可用；3 基础检查通过但存在部署待补项。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -35,6 +35,8 @@ const modeLabel = workers
 const token = (process.env.CLOUDFLARE_API_TOKEN || '').trim();
 let aid = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
 let blockers = 0;
+// Workers Free：这些不是「配置错误」，但缺任一项都还不能真正 wrangler deploy。
+const deployGaps = [];
 
 const beijing = () =>
   new Date(Date.now() + 8 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' 北京';
@@ -121,10 +123,12 @@ if (vps) {
     ok(`Hyperdrive 配置 ${list.length} 个：${list.map((c) => c.name).join(', ')}`);
   } else {
     warn('尚无 Hyperdrive 配置：填 DATABASE_URL 后执行 npm run provision-hyperdrive');
+    deployGaps.push('Hyperdrive 配置');
   }
   const wranglerText = readFileSync(join(ROOT, 'wrangler.workers.jsonc'), 'utf8');
   if (wranglerText.includes('00000000000000000000000000000000')) {
     warn('wrangler.workers.jsonc 仍是占位 Hyperdrive id（本地 dev 可用，部署前必须替换为真实 id）');
+    deployGaps.push('Hyperdrive 真实 id');
   } else {
     ok('wrangler.workers.jsonc 已绑定真实 Hyperdrive id');
   }
@@ -204,6 +208,7 @@ const jwt = isSet(env.JWT_SECRET) ? env.JWT_SECRET : '';
 if (jwt && jwt.length < 16) block('JWT_SECRET 少于 16 位');
 if (workers && !isSet(env.DATABASE_URL)) {
   warn('DATABASE_URL 未配置：Worker Secret 不需要它，但 provision-hyperdrive / bootstrap-db 需要');
+  deployGaps.push('DATABASE_URL');
 }
 if (env.R2_ACCOUNT_ID && env.R2_ACCOUNT_ID !== aid) {
   warn('R2_ACCOUNT_ID 与当前 Cloudflare Account ID 不一致，请确认');
@@ -239,5 +244,10 @@ if (!dbUrl) {
   }
 }
 
+if (blockers === 0 && deployGaps.length) {
+  console.log(`\n=== 预检结束：基础检查通过，但生产部署仍有 ${deployGaps.length} 项待补：${deployGaps.join('、')} ===\n`);
+  console.log('       先执行 npm run provision-hyperdrive 再重新预检；不要直接 wrangler deploy。\n');
+  process.exit(3);
+}
 console.log(`\n=== 预检结束：${blockers === 0 ? '全部就绪，可以部署' : `${blockers} 项阻塞`} ===\n`);
 process.exit(blockers === 0 ? 0 : 1);
