@@ -30,13 +30,28 @@ const FIELDS = [
   'downloaddomain', 'udpdomain', 'tcpdomain',
 ];
 
+// 错误码释义以官方接口文档为准（modifyserverdomaindirectly / modifyserverdomain /
+// geteffectiveserverdomain，最后编辑 2026-07-04 / 2026-09-09）。
+// 注意：方式二未备案返回 errcode=45082；no_icp_domain / invalid_requestdomain
+// 是方式一 modify_domain 的返回字段，不是方式二的。
 const ERR_HINTS = {
   61007: '权限集 18 未授权给该第三方平台，或已被另一家服务商占用（该权限集互斥）',
   40001: 'access_token 无效：确认使用 authorizer_access_token 而非 component_access_token',
+  40014: 'access_token 不合法或已过期，请让服务商重新换取',
   42001: 'access_token 已过期，请让服务商重新换取',
   44002: 'POST 请求体为空（脚本已自动传 {}，若出现需检查代理是否改写请求）',
+  45082: '域名未完成 ICP 备案（need icp license for the url domain）；第三方托管不是备案豁免',
   48001: '接口未授权，检查第三方平台权限集配置',
-  85015: '域名数量或格式不符合要求',
+  85015: '该账号不是小程序账号，请确认 authorizer 对应的是小程序而非公众号',
+  85016: '域名数量超出限制（每类最多 200 个）',
+  85017: '没有可修改的域名：输入为空，或域名尚未登记到第三方平台（方式一）',
+  85018: '域名没有在第三方平台设置（方式一需先调 modify_wxa_server_domain 登记）',
+  85301: '存在不符合域名规则的域名，导致无修改',
+  85302: '存在缺少 ICP 备案的域名，导致无修改',
+  85303: '同时存在不符合规则与缺少 ICP 备案的域名，导致无修改',
+  86100: 'URL 协议头有误（request 合法域名必须是 https://）',
+  86101: '不支持把 api.weixin.qq.com 配置为服务器域名',
+  86102: '本月域名修改次数已达 50 次上限',
 };
 
 function usage() {
@@ -117,7 +132,9 @@ function printDomains(label, obj) {
 }
 
 /**
- * 微信接口可能在 errcode=0 时仍返回「被拒域名」字段（尤其实测未备案场景）。
+ * 方式一 modify_domain 可能在 errcode=0 时仍返回「被拒域名」字段（伪成功）。
+ * 方式二 modify_domain_directly 的返回体按官方只有 errcode/errmsg，
+ * 未备案走 errcode=45082；这里保留字段检查作为防御，避免混用方式时漏判。
  * 返回 true 表示存在需要当作失败处理的警告。
  */
 function printWarnings(res) {

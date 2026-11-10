@@ -674,11 +674,23 @@ Workers 不注入，因此 Worker bundle **完全不含** `node:net` / `node:tls
 
 ### 10.7 域名引导与证书（2026-11-10，北京）
 
-**证书不需要单独签发。** Cloudflare Universal SSL 是 Zone 级证书，实测账户下只有
-一张 `universal / active` 证书包，hosts 为 `maolizheng.xyz, *.maolizheng.xyz`，
-由 Google Trust Services `WE1` 签发，有效期至北京 2027-01-18 18:40。
-`api.maolizheng.xyz` 已落在通配 SAN 内。为单个子域签发专属证书需要付费的
-Advanced Certificate Manager，对微信小程序没有任何额外收益。
+**证书不需要手工签发，但确实会新增一张。** Cloudflare 官方《Custom Domains》
+明确：创建 Custom Domain 会自动为目标主机名生成一张 **Advanced Certificate**，
+且「**无需单独订阅 Advanced Certificate Manager**」（不额外收费）。这是异步动作：
+绑定刚完成时证书包仍只有 1 张 `universal / active`
+（`maolizheng.xyz, *.maolizheng.xyz`，GTS `WE1`），`api.` 暂由通配 SAN 覆盖；
+约一小时后复查变成 **2 张**：
+
+| 类型 | 状态 | hosts | 签发方 |
+| --- | --- | --- | --- |
+| `advanced` | active | `maolizheng.xyz, api.maolizheng.xyz, *.api.maolizheng.xyz` | Google（90 天） |
+| `universal` | active | `maolizheng.xyz, *.maolizheng.xyz` | Google（90 天） |
+
+`openssl s_client` 实测 `api.maolizheng.xyz` 使用的是 advanced 这张
+（有效期至北京 2027-02-08 07:34），SAN 明确包含该主机名，不再是仅靠通配覆盖。
+因此「给 `api.maolizheng.xyz` 签发证书」由 Custom Domain 绑定自动完成，无需、
+也不应手工调用证书签发接口。注意官方另有一条：删除 Custom Domain 时这张
+advanced 证书**不会自动删除**，需到 SSL/TLS → Edge Certificates 手动清理。
 
 **域名绑定的正确触发方式**：Cloudflare 不允许为「尚不存在的 Worker」手工创建
 Custom Domain，DNS 记录与绑定都由 `wrangler deploy` 自动完成。因此在数据库就绪前，
@@ -693,7 +705,9 @@ npm run deploy:domain      # 需 CLOUDFLARE_API_TOKEN；创建 DNS + Custom Doma
 部署后 Cloudflare 自动生成 `AAAA 100::`（proxied）记录并绑定
 `api.maolizheng.xyz → detect-network-worker`。实测：
 `https://api.maolizheng.xyz/__worker/health` 返回 200，`ssl_verify_result=0`，
-TLS 1.2 / 1.3 均可用，证书链完整；与 `proxy.maolizheng.xyz` 为同一张证书。
+TLS 1.2 / 1.3 均可用，证书链完整。advanced 证书签发完成后，`api.` 与
+`proxy.maolizheng.xyz` 分别使用 advanced / universal 两张边缘证书（同为 Google
+签发），不再是同一张。
 
 **引导态的安全约束**：`/api/health` 刻意返回 `503 BACKEND_NOT_DEPLOYED`，
 避免 `deploy/switch-backend.mjs selfhost --check` 误判后端已就绪而把前端切到
@@ -705,11 +719,14 @@ Custom Domain 与 DNS 记录由 Cloudflare 复用。`preflight.mjs --workers` �
 先查 Workers Custom Domains：域名已绑定目标 Worker 时报 OK 并提示复用，
 不再误报「需清理 DNS」；绑定到其它 Worker 时才报 BLOCK。
 
-**仍需人工完成的两项**（工具无法代做）：域名 ICP 备案有效性确认；微信公众平台
-「开发管理 → 开发设置 → 服务器域名」把 `https://api.maolizheng.xyz` 加入 request
-合法域名（不能带端口或路径，平台会校验备案）。小程序自身也需完成 ICP 代备案。
-若该小程序已把「开发权限集 18」授权给第三方平台代开发，后台将**不允许自行配置**
-服务器域名，改按 §10.8 处理。
+**仍需人工完成的两项**（工具无法代做）：域名 ICP 备案有效性确认；把
+`https://api.maolizheng.xyz` 加入小程序 request 合法域名（不能带端口或路径，
+平台会校验备案）。小程序自身也需完成 ICP 代备案。
+
+本小程序已确认把「开发权限集 18」授权给第三方平台代开发，公众平台后台
+**不允许自行配置**服务器域名，因此第二项须走 §10.8 路径 A，由服务商调用
+接口完成。可直接转发 `deploy/WECHAT_DOMAIN_HANDOFF.md` 给服务商，无需其
+阅读本仓库其它文档。
 
 ### 10.8 代开发小程序（第三方托管）下的服务器域名配置
 
@@ -739,8 +756,13 @@ Custom Domain 与 DNS 记录由 Cloudflare 复用。`preflight.mjs --workers` �
 3. 能拿到该服务商签发的 `authorizer_access_token`（短期凭证，本项目仓库内没有
    `component_appid` / `component_secret` / `authorizer_refresh_token`，因此无法代为调用）。
 
-**给服务商的一页操作单**（`deploy/wechat-domain.mjs`，零依赖、默认 dry-run、
-凭证只从环境变量读取且不回显）：
+**已选定路径 A（方式二）**。完整、可直接转发给服务商的自包含操作单见
+**`deploy/WECHAT_DOMAIN_HANDOFF.md`**：含 AppID、curl 三步（get → add →
+get_effective_domain）、成功判据、官方错误码表、前置条件与回传要求，
+服务商无需阅读本仓库其它文档。
+
+仓库脚本 `deploy/wechat-domain.mjs` 零依赖、默认 dry-run、凭证只从环境变量
+读取且不回显：
 
 ```bash
 # 1) 先空跑，确认请求体（先 get 再 add，不重复添加已有域名）
@@ -756,7 +778,14 @@ WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --effective
 WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --mode standard --apply
 ```
 
-脚本覆盖 get/add、已存在跳过、61007 / 未备案提示、两种方式切换与生效域名查询，
-本地 HTTP mock 测试 **20/20** 通过（`node deploy/wechat-domain.test.mjs`，用例已入库）。
-修改配额每月 50 次；官方建议**不要混用**公众平台 / 方式一 / 方式二配置同一小程序域名；
-`--effective` 中的 `effective_domain` 才是发布后真正生效的列表。
+脚本覆盖 get/add、已存在跳过、方式二 `45082` 未备案、方式一 `85303` 与
+`no_icp_domain` 伪成功、`61007` 权限集冲突、`85015` / `86102` 等官方错误码，
+两种方式切换与生效域名查询；本地 HTTP mock 测试 **26/26** 通过
+（`node deploy/wechat-domain.test.mjs`，用例已入库）。错误码释义已按官方
+`modifyserverdomaindirectly` / `modifyserverdomain` 文档校正：方式二未备案返回
+`45082`，`no_icp_domain` / `invalid_requestdomain` 是方式一字段；`85015` 是
+「该账号不是小程序账号」而非域名数量问题。
+
+修改配额每月 50 次；官方建议**不要混用**公众平台 / 方式一 / 方式二配置同一
+小程序域名；`--effective` 中的 `effective_domain` 才是发布后真正生效的列表。
+方式二配置后**需发布上线才生效**，发布前务必核对 `effective_domain`。
