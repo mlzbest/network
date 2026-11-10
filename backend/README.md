@@ -708,3 +708,55 @@ Custom Domain 与 DNS 记录由 Cloudflare 复用。`preflight.mjs --workers` �
 **仍需人工完成的两项**（工具无法代做）：域名 ICP 备案有效性确认；微信公众平台
 「开发管理 → 开发设置 → 服务器域名」把 `https://api.maolizheng.xyz` 加入 request
 合法域名（不能带端口或路径，平台会校验备案）。小程序自身也需完成 ICP 代备案。
+若该小程序已把「开发权限集 18」授权给第三方平台代开发，后台将**不允许自行配置**
+服务器域名，改按 §10.8 处理。
+
+### 10.8 代开发小程序（第三方托管）下的服务器域名配置
+
+**现象与根因**。小程序把「开发权限集」（权限集 ID **18**）授权给第三方服务商后，
+微信官方《代开发的小程序域名配置说明》（最后编辑 2026-07-04）明确：
+此类小程序**不可在微信公众平台配置服务器域名和业务域名，只能由第三方服务商
+通过接口配置**。这在后台表现为服务器域名区域不可编辑 / 提示由第三方平台管理，
+与本项目现象一致。
+
+**必须知道的风险**（官方原文规则）：走「方式一」时，授权前小程序自己配过的域名，
+若服务商没有把该域名登记到第三方平台，小程序**发布时该域名会被删除**；
+服务商发布前又从平台删除域名，线上同样会失效。因此发布前务必用
+`get_effective_domain` 核对「发布后生效域名列表」。
+
+| 路径 | 做法 | 优点 | 代价 / 风险 |
+| --- | --- | --- | --- |
+| **A. 方式二（推荐）** | 服务商用 `authorizer_access_token` 调 `wxa/modify_domain_directly`，`action=add` 追加 `https://api.maolizheng.xyz` | 无需先登记到第三方平台白名单；一个域名可直接配到授权小程序 | 配置后**需发布上线才生效**；一个域名最多加到 100 个主体小程序；需服务商配合 |
+| **B. 方式一** | 服务商先用 `component_access_token` 调 `cgi-bin/component/modify_wxa_server_domain` 登记域名，再调 `wxa/modify_domain` | 适合服务商批量模板小程序 | 多一步；漏登记或事后删除会导致发布时域名被清掉 |
+| **C. 解除授权** | 小程序后台 →「设置 → 第三方设置 → 第三方平台授权管理 → 解除授权」，之后回「开发设置 → 服务器域名」自行配置 | 完全自主，无需服务商 | 官方明确「开发权限托管后所有发布操作必须通过该第三方平台」，解除后原发布链可能失效。本项目代码上传用 `miniprogram-ci` + 上传私钥，不依赖第三方授权，但**老板当前依赖的托管发布能力需先确认** |
+| **D. 微信云托管** | 后端迁到云托管，用 `callContainer` 调用 | 官方明确「无需配置通讯域名」，彻底绕开该问题 | 需把 Workers Free + Hyperdrive + R2 整套迁移，成本最高 |
+
+**前置条件（任一条不满足都会失败）**：
+1. `maolizheng.xyz` 已完成 ICP 备案且有效——第三方托管**不是**备案豁免，接口会返回
+   `no_icp_domain`；
+2. 权限集 18 已授权给对应服务商；该权限集互斥，同时只能授权给一家（否则返回
+   `61007 api is unauthorized to component`）；
+3. 能拿到该服务商签发的 `authorizer_access_token`（短期凭证，本项目仓库内没有
+   `component_appid` / `component_secret` / `authorizer_refresh_token`，因此无法代为调用）。
+
+**给服务商的一页操作单**（`deploy/wechat-domain.mjs`，零依赖、默认 dry-run、
+凭证只从环境变量读取且不回显）：
+
+```bash
+# 1) 先空跑，确认请求体（先 get 再 add，不重复添加已有域名）
+WX_AUTHORIZER_ACCESS_TOKEN=<服务商提供的 token> node deploy/wechat-domain.mjs
+
+# 2) 确认无误后提交（方式二）
+WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --apply
+
+# 3) 发布前核对「发布后生效」的域名
+WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --effective
+
+# 若服务商只支持方式一：先由其调用 modify_wxa_server_domain 登记域名，再：
+WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --mode standard --apply
+```
+
+脚本覆盖 get/add、已存在跳过、61007 / 未备案提示、两种方式切换与生效域名查询，
+本地 HTTP mock 测试 **20/20** 通过（`node deploy/wechat-domain.test.mjs`，用例已入库）。
+修改配额每月 50 次；官方建议**不要混用**公众平台 / 方式一 / 方式二配置同一小程序域名；
+`--effective` 中的 `effective_domain` 才是发布后真正生效的列表。
