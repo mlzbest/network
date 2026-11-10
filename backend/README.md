@@ -778,14 +778,30 @@ WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --effective
 WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --mode standard --apply
 ```
 
-脚本覆盖 get/add、已存在跳过、方式二 `45082` 未备案、方式一 `85303` 与
-`no_icp_domain` 伪成功、`61007` 权限集冲突、`85015` / `86102` 等官方错误码，
-两种方式切换与生效域名查询；本地 HTTP mock 测试 **26/26** 通过
-（`node deploy/wechat-domain.test.mjs`，用例已入库）。错误码释义已按官方
-`modifyserverdomaindirectly` / `modifyserverdomain` 文档校正：方式二未备案返回
-`45082`，`no_icp_domain` / `invalid_requestdomain` 是方式一字段；`85015` 是
-「该账号不是小程序账号」而非域名数量问题。
+脚本覆盖 get/add、逐类比对只补缺失分类、三类已存在跳过、方式二 `45082`
+未备案、方式一 `85303` 与 `no_icp_domain` 伪成功、`61007` 权限集冲突、
+`85015` / `86102` 等官方错误码、两种方式切换与生效域名查询；本地 HTTP mock
+测试 **32/32** 通过（`node deploy/wechat-domain.test.mjs`，用例已入库）。
+错误码释义已按官方 `modifyserverdomaindirectly` / `modifyserverdomain` 文档
+校正：方式二未备案返回 `45082`，`no_icp_domain` / `invalid_requestdomain` 是
+方式一字段；`85015` 是「该账号不是小程序账号」而非域名数量问题。
 
 修改配额每月 50 次；官方建议**不要混用**公众平台 / 方式一 / 方式二配置同一
 小程序域名；`--effective` 中的 `effective_domain` 才是发布后真正生效的列表。
 方式二配置后**需发布上线才生效**，发布前务必核对 `effective_domain`。
+
+**域名分类（易漏项，已修正）**：`api.maolizheng.xyz` 不是只配
+`requestdomain` 就够。后端把业务 API 与对象存储放在同一域名下
+（`PUBLIC_BASE_URL`，未设 `R2_PUBLIC_URL` 直出）：
+
+| 分类 | 依据 |
+| --- | --- |
+| `requestdomain` | `selfhost-client.ts` 的 `shFetch` → `Taro.request`（登录、数据、RPC、base64 上传） |
+| `downloaddomain` | `src/lib/file-message.ts:117`、`src/pages/profile/index.tsx:162` 的 `Taro.downloadFile`；网络图片亦按官方《网络》文档归入同一套域名/证书检查 |
+| `uploaddomain` | 预留：当前上传走 `Taro.request` + base64，未用 `uploadFile`；一并配置省一次配额 |
+| `wsrequestdomain` / `udpdomain` / `tcpdomain` | 不配：selfhost `.channel()` 是轮询占位，无 WebSocket |
+
+脚本**默认一次追加三类**，按 `get` 结果逐类比对、只补缺失分类，可安全重复执行；
+`--scope request` 兼容旧版只配一类。若服务商已按旧版操作单配了
+`requestdomain`，再跑一次 `--apply` 即自动补齐另外两类。
+`deploy/WECHAT_DOMAIN_HANDOFF.md` 已同步为三类版本，**请以新版转发**。

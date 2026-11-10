@@ -14,8 +14,9 @@
 《代开发的小程序域名配置说明》，此类小程序**不能在微信公众平台后台自行配置
 服务器域名**，只能由服务商通过开放平台接口配置。
 
-本次只需**追加一个 request 合法域名**，不改动 socket / uploadFile /
-downloadFile / udp / tcp 任何已有配置。
+本次把**同一个域名追加到三个域名分类**（request / uploadFile / downloadFile），
+全部使用 `action=add` 追加，不改动该小程序已有的其它域名配置。
+socket / udp / tcp 三类无需配置——本项目 selfhost 后端不使用 WebSocket。
 
 ## 2. 本次配置值
 
@@ -24,8 +25,22 @@ downloadFile / udp / tcp 任何已有配置。
 | 小程序 AppID | `wx24a39e0a660ee585` |
 | 接口 | `POST https://api.weixin.qq.com/wxa/modify_domain_directly` |
 | 操作 | `action=add`（**追加**；严禁使用 `set` 覆盖） |
-| request 合法域名 | `https://api.maolizheng.xyz` |
-| 其余五类域名 | 保持不变；接口要求字段必填时传空数组 `[]` |
+| 目标域名 | `https://api.maolizheng.xyz` |
+| 需追加到的分类 | `requestdomain`、`uploaddomain`、`downloaddomain`（**三类都要**） |
+| 其余三类 | `wsrequestdomain` / `udpdomain` / `tcpdomain` 传空数组 `[]` |
+
+**为什么是三类**（依据微信官方《网络》文档与需求方代码）：
+
+| 分类 | 对应 API / 组件 | 需求方依据 |
+| --- | --- | --- |
+| `requestdomain` | `wx.request` | `selfhost-client.ts` 的 `shFetch` 用 `Taro.request`，承载登录、数据、RPC 与 base64 上传 |
+| `uploaddomain` | `wx.uploadFile` | **预留**：当前上传走 `Taro.request` + base64，未用 uploadFile；一并配置可避免日后再次消耗每月配额 |
+| `downloaddomain` | `wx.downloadFile`、网络图片 | `src/lib/file-message.ts` 与 `src/pages/profile/index.tsx` 明确调用 `Taro.downloadFile`；官方《网络》文档把「https 图片无法加载」归入同一套域名/证书检查流程 |
+
+后端把业务 API 与对象存储放在**同一个域名**下
+（`PUBLIC_BASE_URL=https://api.maolizheng.xyz`，未配置 `R2_PUBLIC_URL` 直出），
+因此三类填的是同一个值。若漏配 `downloaddomain`，头像、图片消息与文件预览在
+正式版将全部失败——开发者工具勾选「不校验合法域名」时不会暴露该问题。
 
 域名写法必须严格为 `https://api.maolizheng.xyz`：带 `https://` 前缀、
 **不带端口**（连 `:443` 也不能带）、不带路径、不是 IP、不是父域名。
@@ -61,12 +76,14 @@ export WX_TOKEN='<贵方生成的 authorizer_access_token>'
 curl -sS -X POST "https://api.weixin.qq.com/wxa/modify_domain_directly?access_token=$WX_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"action":"get"}'
-# 若返回的 requestdomain 已含 https://api.maolizheng.xyz → 跳过步骤 2，直接做步骤 3
+# 检查返回的 requestdomain / uploaddomain / downloaddomain 三类：
+#   三类都已含目标域名 → 跳过步骤 2，直接做步骤 3
+#   只含部分分类       → 步骤 2 请求体中把已存在的分类改为 []，只 add 缺失的
 
-# 步骤 2 · 追加域名（action=add，不是 set）
+# 步骤 2 · 追加域名到三类（action=add，不是 set）
 curl -sS -X POST "https://api.weixin.qq.com/wxa/modify_domain_directly?access_token=$WX_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"action":"add","requestdomain":["https://api.maolizheng.xyz"],"wsrequestdomain":[],"uploaddomain":[],"downloaddomain":[],"udpdomain":[],"tcpdomain":[]}'
+  -d '{"action":"add","requestdomain":["https://api.maolizheng.xyz"],"wsrequestdomain":[],"uploaddomain":["https://api.maolizheng.xyz"],"downloaddomain":["https://api.maolizheng.xyz"],"udpdomain":[],"tcpdomain":[]}'
 
 # 步骤 3 · 查询「发布后真正生效」的域名列表（POST body 不能为空，必须传 {}）
 curl -sS -X POST "https://api.weixin.qq.com/wxa/get_effective_domain?access_token=$WX_TOKEN" \
@@ -74,20 +91,26 @@ curl -sS -X POST "https://api.weixin.qq.com/wxa/get_effective_domain?access_toke
   -d '{}'
 ```
 
-也可以使用需求方仓库里的零依赖脚本（默认 dry-run，凭证只从环境变量读取、不回显）：
+**更推荐用需求方仓库的零依赖脚本**：它会先 `get`、逐类比对，**只追加缺失的分类**，
+可安全重复执行（默认 dry-run，凭证只从环境变量读取、不回显）：
 
 ```bash
 WX_AUTHORIZER_ACCESS_TOKEN="$WX_TOKEN" node deploy/wechat-domain.mjs            # 空跑确认请求体
-WX_AUTHORIZER_ACCESS_TOKEN="$WX_TOKEN" node deploy/wechat-domain.mjs --apply     # 提交 add
+WX_AUTHORIZER_ACCESS_TOKEN="$WX_TOKEN" node deploy/wechat-domain.mjs --apply     # 提交 add（三类）
 WX_AUTHORIZER_ACCESS_TOKEN="$WX_TOKEN" node deploy/wechat-domain.mjs --effective # 查生效域名
 ```
+
+若贵方已按**旧版操作单**只配置了 `requestdomain`，无需手工构造请求体，直接再跑一次
+`--apply` 即可自动补上 `uploaddomain` / `downloaddomain`。
+仅需 request 分类时可用 `--scope request`（兼容旧行为）。
 
 ## 5. 成功判据
 
 1. 步骤 2 返回 `{"errcode":0,"errmsg":"ok"}`；
-2. 步骤 3 的 `direct_domain.requestdomain` 包含 `https://api.maolizheng.xyz`；
+2. 步骤 3 的 `direct_domain` 中 **`requestdomain`、`uploaddomain`、
+   `downloaddomain` 三类都包含** `https://api.maolizheng.xyz`；
 3. **方式二配置的域名需发布上线后才真正生效**：发布后
-   `effective_domain.requestdomain` 才应包含该域名。发布前请务必先看
+   `effective_domain` 的三类同样都应包含该域名。发布前请务必先看
    `effective_domain`，确认无误再发布代码。
 
 `mp_domain`（公众平台）、`third_domain`（方式一）、`direct_domain`（方式二）
@@ -114,6 +137,11 @@ WX_AUTHORIZER_ACCESS_TOKEN="$WX_TOKEN" node deploy/wechat-domain.mjs --effective
 
 ## 7. 必须遵守的注意事项
 
+- **三类域名分类必须都配**：只配 `requestdomain` 时，`wx.downloadFile` 与
+  网络图片在正式版会被拦截；开发者工具勾选「不校验合法域名」或手机调试模式
+  不会暴露该问题，容易误判为「已配好」。
+- `wsrequestdomain` / `udpdomain` / `tcpdomain` 保持为空，本项目 selfhost
+  后端不使用 WebSocket / UDP / TCP socket。
 - **每月域名修改上限 50 次**，一次配好即可。
 - 官方明确：之前通过该 API 配置且**已上线成功**的旧域名不要重新 `set`，
   否则需要重新发布才生效；新增只用 `add`。

@@ -11,6 +11,14 @@
  *   - modify_domain（方式一）：需服务商先用 component_access_token 调用
  *     modify_wxa_server_domain 把域名登记到第三方平台白名单，否则发布时会被删除。
  *
+ * 域名分类：本项目 selfhost 后端把业务 API 与对象存储放在同一个域名下，
+ * 因此默认一次把该域名追加到 request / uploadFile / downloadFile 三类：
+ *   requestdomain    → Taro.request（数据、鉴权、base64 上传）
+ *   uploaddomain     → 预留（当前上传走 Taro.request，未用 uploadFile）
+ *   downloaddomain   → Taro.downloadFile（文件预览、头像自愈）与网络图片
+ * socket / udp / tcp 不配：selfhost 的 .channel() 是轮询占位，无 WebSocket。
+ * 脚本按 get 结果只追加缺失的分类，可安全重复执行（含补齐旧版只配 request 的情况）。
+ *
  * 凭证只从环境变量读取，不落盘、不回显。默认 dry-run，必须显式 --apply 才提交。
  * 修改配额：每月 50 次；不要混用多种配置方式。
  *
@@ -19,6 +27,7 @@
  *   WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --apply
  *   WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --effective
  *   WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --mode standard --apply
+ *   WX_AUTHORIZER_ACCESS_TOKEN=<token> node deploy/wechat-domain.mjs --scope request --apply
  *
  * 环境变量 WX_API_BASE 可覆盖 API 根地址（仅用于本地 mock 测试）。
  */
@@ -29,6 +38,8 @@ const FIELDS = [
   'requestdomain', 'wsrequestdomain', 'uploaddomain',
   'downloaddomain', 'udpdomain', 'tcpdomain',
 ];
+// 同一个域名需要同时出现在多个分类里，见文件头说明。
+const DEFAULT_SCOPES = ['requestdomain', 'uploaddomain', 'downloaddomain'];
 
 // 错误码释义以官方接口文档为准（modifyserverdomaindirectly / modifyserverdomain /
 // geteffectiveserverdomain，最后编辑 2026-07-04 / 2026-09-09）。
@@ -60,7 +71,9 @@ function usage() {
   --apply              真实提交（默认 dry-run，只打印请求体）
   --effective          查询「发布后生效」的域名列表，不做修改
   --mode <mode>        directly（默认，方式二）| standard（方式一）
-  --domain <url>       目标 request 合法域名，默认 ${DEFAULT_DOMAIN}
+  --scope <scope>      all（默认：request + uploadFile + downloadFile 三类）
+                       | request（仅 requestdomain，兼容旧版操作单）
+  --domain <url>       目标合法域名，默认 ${DEFAULT_DOMAIN}
   --token-env <name>   凭证环境变量名，默认 WX_AUTHORIZER_ACCESS_TOKEN
   --base-url <url>     API 根地址，默认 ${DEFAULT_BASE}（也可用 WX_API_BASE）
   -h, --help           显示本帮助
@@ -73,6 +86,7 @@ function parseArgs(argv) {
     apply: false,
     effective: false,
     mode: 'directly',
+    scope: 'all',
     domain: DEFAULT_DOMAIN,
     tokenEnv: 'WX_AUTHORIZER_ACCESS_TOKEN',
     base: (process.env.WX_API_BASE || DEFAULT_BASE).replace(/\/$/, ''),
@@ -82,10 +96,11 @@ function parseArgs(argv) {
     if (a === '--apply') opts.apply = true;
     else if (a === '--effective') opts.effective = true;
     else if (a === '-h' || a === '--help') { usage(); process.exit(0); }
-    else if (['--mode', '--domain', '--token-env', '--base-url'].includes(a)) {
+    else if (['--mode', '--scope', '--domain', '--token-env', '--base-url'].includes(a)) {
       const value = argv[++i];
       if (!value) { console.error(`[wechat-domain] ${a} 缺少取值`); process.exit(2); }
       if (a === '--mode') opts.mode = value;
+      if (a === '--scope') opts.scope = value;
       if (a === '--domain') opts.domain = value;
       if (a === '--token-env') opts.tokenEnv = value;
       if (a === '--base-url') opts.base = value.replace(/\/$/, '');
@@ -96,6 +111,10 @@ function parseArgs(argv) {
   }
   if (!['directly', 'standard'].includes(opts.mode)) {
     console.error('[wechat-domain] --mode 只能是 directly 或 standard');
+    process.exit(2);
+  }
+  if (!['all', 'request'].includes(opts.scope)) {
+    console.error('[wechat-domain] --scope 只能是 all 或 request');
     process.exit(2);
   }
   if (!/^https:\/\/[a-z0-9.-]+$/i.test(opts.domain)) {
@@ -168,7 +187,8 @@ async function main() {
     process.exit(2);
   }
 
-  console.log(`[wechat-domain] 模式=${opts.mode} 目标=${opts.domain}`);
+  const scopes = opts.scope === 'request' ? ['requestdomain'] : DEFAULT_SCOPES;
+  console.log(`[wechat-domain] 模式=${opts.mode} 目标=${opts.domain} 分类=${scopes.join(', ')}`);
   console.log(`[wechat-domain] 端点=${opts.base} 凭证=${opts.tokenEnv}（尾号 …${token.slice(-4)}）`);
 
   if (opts.effective) {
@@ -185,20 +205,25 @@ async function main() {
     ? '/wxa/modify_domain_directly'
     : '/wxa/modify_domain';
 
-  // 先 get：避免重复添加已存在的域名（官方明确要求 add 前先 get）。
+  // 先 get：官方要求 add 前先 get，避免重复添加已存在的域名。
   const current = await call(opts.base, path, token, { action: 'get' });
   if (current.errcode) fail(current);
   printDomains('当前服务器域名配置', current);
 
-  const existing = Array.isArray(current.requestdomain) ? current.requestdomain : [];
-  if (existing.includes(opts.domain)) {
-    console.log(`\n[wechat-domain] ${opts.domain} 已在 request 合法域名中，无需修改。`);
+  // 逐类判断：只追加缺失的分类，支持增量补齐旧版只配 request 的情况。
+  const missing = scopes.filter((f) => {
+    const list = Array.isArray(current[f]) ? current[f] : [];
+    return !list.includes(opts.domain);
+  });
+  console.log(`\n[wechat-domain] 缺失分类：${missing.length ? missing.join(', ') : '无'}`);
+  if (!missing.length) {
+    console.log(`\n[wechat-domain] ${opts.domain} 已在上述全部分类中，无需修改。`);
     console.log('[wechat-domain] 用 --effective 确认它是否已在发布后生效列表中。');
     return;
   }
 
-  const body = { action: 'add', requestdomain: [opts.domain] };
-  for (const f of FIELDS) if (f !== 'requestdomain') body[f] = [];
+  const body = { action: 'add' };
+  for (const f of FIELDS) body[f] = missing.includes(f) ? [opts.domain] : [];
 
   console.log('\n[wechat-domain] 待提交请求体：');
   console.log(JSON.stringify(body, null, 2));
@@ -213,7 +238,7 @@ async function main() {
     console.error('[wechat-domain] 接口返回 ok 但存在被拒域名，配置未完成，请修复后重试。');
     process.exit(1);
   }
-  console.log('\n[wechat-domain] 配置成功（errcode=0）。');
+  console.log(`\n[wechat-domain] 配置成功（errcode=0），本次追加分类：${missing.join(', ')}。`);
   console.log('[wechat-domain] 注意：域名需发布上线后才真正生效；发布前执行 --effective 核对 effective_domain。');
   if (opts.mode === 'standard') {
     console.log('[wechat-domain] 方式一：请确认服务商已用 component_access_token 调用');
